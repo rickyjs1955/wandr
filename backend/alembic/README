@@ -1,0 +1,44 @@
+Generic single-database configuration for Wandr spatial intelligence platform.
+
+# Alembic Database Migrations
+
+This directory contains all database migration scripts for the Wandr platform.
+
+## Setup
+
+1. Ensure PostgreSQL is running and database is created
+2. Configure DATABASE_URL in .env file
+3. Run migrations: `alembic upgrade head`
+
+## Common Commands
+
+Generate a new migration (auto-detect changes):
+```bash
+alembic revision --autogenerate -m "description of changes"
+```
+
+Apply all pending migrations:
+```bash
+alembic upgrade head
+```
+
+Rollback last migration:
+```bash
+alembic downgrade -1
+```
+
+Show current database version:
+```bash
+alembic current
+```
+
+Show migration history:
+```bash
+alembic history --verbose
+```
+
+## Migration Structure
+
+- `env.py` - Configuration for Alembic migrations
+- `script.py.mako` - Template for new migration files
+- `versions/` - Directory containing all migration scripts

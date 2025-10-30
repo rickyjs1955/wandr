@@ -5,8 +5,9 @@ import uuid
 from datetime import datetime
 from enum import Enum
 
-from sqlalchemy import Column, String, DateTime, Enum as SQLEnum
+from sqlalchemy import Column, String, DateTime, Boolean, Enum as SQLEnum, ForeignKey, Index
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
 
 from app.core.database import Base
 
@@ -27,14 +28,19 @@ class User(Base):
     username = Column(String(100), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
     role = Column(SQLEnum(UserRole), nullable=False, default=UserRole.MALL_OPERATOR)
+    is_active = Column(Boolean, nullable=False, default=True)
 
-    # Foreign keys
-    mall_id = Column(UUID(as_uuid=True), nullable=True)  # Set after mall creation
-    tenant_id = Column(UUID(as_uuid=True), nullable=True)  # Future use
+    # Foreign keys with constraints
+    mall_id = Column(UUID(as_uuid=True), ForeignKey('malls.id', ondelete='CASCADE'), nullable=True, index=True)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey('tenants.id', ondelete='SET NULL'), nullable=True)
 
     # Timestamps
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     last_login = Column(DateTime, nullable=True)
+
+    # Relationships
+    mall = relationship("Mall", back_populates="users")
+    tenant = relationship("Tenant", back_populates="users")
 
     def __repr__(self):
         return f"<User {self.username} ({self.role})>"

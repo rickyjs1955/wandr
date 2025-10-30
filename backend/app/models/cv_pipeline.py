@@ -4,8 +4,9 @@ Computer vision pipeline models (future use - Phase 3+).
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Column, String, DateTime, Integer, Float, ARRAY, Index
+from sqlalchemy import Column, String, DateTime, Date, Integer, Float, ARRAY, Index, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.orm import relationship
 
 from app.core.database import Base
 
@@ -16,7 +17,7 @@ class VisitorProfile(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     outfit_hash = Column(String(64), nullable=False, index=True)
-    detection_date = Column(DateTime, nullable=False, index=True)
+    detection_date = Column(Date, nullable=False, index=True)  # Changed to Date for day-level analytics
 
     # Outfit descriptor
     outfit = Column(JSONB, nullable=False)  # {top: {type, color}, bottom: {type, color}, shoes: {type, color}}
@@ -24,6 +25,9 @@ class VisitorProfile(Base):
     # Timing
     first_seen = Column(DateTime, nullable=False)
     last_seen = Column(DateTime, nullable=False)
+
+    # Relationships
+    journeys = relationship("Journey", back_populates="visitor_profile")
 
     __table_args__ = (
         Index('ix_visitor_profile_outfit_date', 'outfit_hash', 'detection_date'),
@@ -38,9 +42,9 @@ class Tracklet(Base):
     __tablename__ = "tracklets"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    mall_id = Column(UUID(as_uuid=True), nullable=False, index=True)
-    pin_id = Column(UUID(as_uuid=True), nullable=False, index=True)
-    video_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    mall_id = Column(UUID(as_uuid=True), ForeignKey('malls.id', ondelete='CASCADE'), nullable=False, index=True)
+    pin_id = Column(UUID(as_uuid=True), ForeignKey('camera_pins.id', ondelete='CASCADE'), nullable=False, index=True)
+    video_id = Column(UUID(as_uuid=True), ForeignKey('videos.id', ondelete='CASCADE'), nullable=False, index=True)
 
     # Track info
     track_id = Column(Integer, nullable=False)  # Camera-local ID
@@ -60,8 +64,12 @@ class Tracklet(Base):
     # Quality score
     quality = Column(Float, nullable=False, default=0.0)
 
+    # Relationships
+    from_associations = relationship("Association", foreign_keys="[Association.from_tracklet_id]", back_populates="from_tracklet")
+    to_associations = relationship("Association", foreign_keys="[Association.to_tracklet_id]", back_populates="to_tracklet")
+
     __table_args__ = (
-        Index('ix_tracklet_pin_time', 'pin_id', 't_out'),
+        Index('ix_tracklet_pin_time', 'pin_id', 't_in', 't_out'),  # Enhanced composite index
     )
 
     def __repr__(self):
@@ -73,11 +81,11 @@ class Association(Base):
     __tablename__ = "associations"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    mall_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    mall_id = Column(UUID(as_uuid=True), ForeignKey('malls.id', ondelete='CASCADE'), nullable=False, index=True)
 
-    # Link
-    from_tracklet_id = Column(UUID(as_uuid=True), nullable=False, index=True)
-    to_tracklet_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    # Link with foreign keys
+    from_tracklet_id = Column(UUID(as_uuid=True), ForeignKey('tracklets.id', ondelete='CASCADE'), nullable=False, index=True)
+    to_tracklet_id = Column(UUID(as_uuid=True), ForeignKey('tracklets.id', ondelete='CASCADE'), nullable=False, index=True)
 
     # Decision
     score = Column(Float, nullable=False)
@@ -91,6 +99,10 @@ class Association(Base):
     candidate_count = Column(Integer, nullable=False)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
+    # Relationships
+    from_tracklet = relationship("Tracklet", foreign_keys=[from_tracklet_id], back_populates="from_associations")
+    to_tracklet = relationship("Tracklet", foreign_keys=[to_tracklet_id], back_populates="to_associations")
+
     def __repr__(self):
         return f"<Association {self.from_tracklet_id} -> {self.to_tracklet_id} ({self.decision})>"
 
@@ -100,11 +112,11 @@ class Journey(Base):
     __tablename__ = "journeys"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    visitor_id = Column(UUID(as_uuid=True), nullable=False, index=True)  # Links to VisitorProfile
-    mall_id = Column(UUID(as_uuid=True), nullable=False, index=True)
+    visitor_id = Column(UUID(as_uuid=True), ForeignKey('visitor_profiles.id', ondelete='CASCADE'), nullable=False, index=True)
+    mall_id = Column(UUID(as_uuid=True), ForeignKey('malls.id', ondelete='CASCADE'), nullable=False, index=True)
 
     # Journey metadata
-    journey_date = Column(DateTime, nullable=False, index=True)
+    journey_date = Column(Date, nullable=False, index=True)  # Changed to Date for day-level analytics
     entry_time = Column(DateTime, nullable=False)
     exit_time = Column(DateTime, nullable=True)
     total_duration_minutes = Column(Integer, nullable=True)
@@ -115,12 +127,15 @@ class Journey(Base):
     # Path
     path = Column(JSONB, nullable=False)  # [{camera_pin_id, camera_pin_name, arrival_time, departure_time, duration_seconds, link_score}]
 
-    # Entry/exit points
-    entry_point = Column(UUID(as_uuid=True), nullable=False, index=True)
-    exit_point = Column(UUID(as_uuid=True), nullable=True, index=True)
+    # Entry/exit points with foreign keys
+    entry_point = Column(UUID(as_uuid=True), ForeignKey('camera_pins.id', ondelete='RESTRICT'), nullable=False, index=True)
+    exit_point = Column(UUID(as_uuid=True), ForeignKey('camera_pins.id', ondelete='RESTRICT'), nullable=True, index=True)
 
     # Timestamps
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    # Relationships
+    visitor_profile = relationship("VisitorProfile", back_populates="journeys")
 
     __table_args__ = (
         Index('ix_journey_date_mall', 'journey_date', 'mall_id'),

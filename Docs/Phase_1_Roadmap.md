@@ -431,7 +431,7 @@ async def logout(session_id: str, response: Response):
   - Access protected route with valid session
 
 - [ ] **Security tests**
-  - Password hash uniqueness (same password ’ different hashes)
+  - Password hash uniqueness (same password ï¿½ different hashes)
   - Session isolation (user A cannot access user B's session)
   - Cookie security flags present
   - Rate limiting on login endpoint
