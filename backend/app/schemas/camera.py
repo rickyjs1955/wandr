@@ -13,8 +13,8 @@ class CameraPinBase(BaseModel):
     """Base camera pin schema."""
     name: str
     label: str
-    latitude: float = Field(..., ge=-90, le=90)
-    longitude: float = Field(..., ge=-180, le=180)
+    location_lat: float = Field(..., ge=-90, le=90, description="Latitude coordinate")
+    location_lng: float = Field(..., ge=-180, le=180, description="Longitude coordinate")
     pin_type: str = Field(default="normal", pattern="^(entrance|normal)$")
     mall_id: UUID
 
@@ -32,8 +32,8 @@ class CameraPinUpdate(BaseModel):
     """Schema for updating a camera pin."""
     name: Optional[str] = None
     label: Optional[str] = None
-    latitude: Optional[float] = Field(None, ge=-90, le=90)
-    longitude: Optional[float] = Field(None, ge=-180, le=180)
+    location_lat: Optional[float] = Field(None, ge=-90, le=90, description="Latitude coordinate")
+    location_lng: Optional[float] = Field(None, ge=-180, le=180, description="Longitude coordinate")
     pin_type: Optional[str] = Field(None, pattern="^(entrance|normal)$")
     adjacent_to: Optional[List[UUID]] = None
     transit_times: Optional[Dict[str, Any]] = None
@@ -65,6 +65,8 @@ class VideoBase(BaseModel):
 class VideoCreate(VideoBase):
     """Schema for creating a video record (after upload)."""
     file_path: str
+    original_filename: str
+    file_size_bytes: int = Field(..., gt=0, description="File size in bytes")
     duration_seconds: Optional[int] = None
 
 
@@ -81,10 +83,13 @@ class Video(VideoBase):
     """Schema for video response."""
     id: UUID
     file_path: str
+    original_filename: str
+    file_size_bytes: int
     duration_seconds: Optional[int] = None
     processed: bool
     processing_status: str
     upload_timestamp: datetime
+    created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
 

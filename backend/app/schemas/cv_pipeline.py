@@ -1,7 +1,7 @@
 """
 Pydantic schemas for CV Pipeline models (future use - Phase 3+).
 """
-from datetime import datetime
+from datetime import datetime, date
 from typing import List, Dict, Any, Optional
 from uuid import UUID
 
@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field, ConfigDict
 class VisitorProfileBase(BaseModel):
     """Base visitor profile schema."""
     outfit_hash: str = Field(..., max_length=64)
-    detection_date: datetime
+    detection_date: date  # Changed from datetime to date for day-level analytics
     outfit: Dict[str, Any]
 
 
@@ -110,7 +110,7 @@ class JourneyBase(BaseModel):
     """Base journey schema."""
     visitor_id: UUID
     mall_id: UUID
-    journey_date: datetime
+    journey_date: date  # Changed from datetime to date for day-level analytics
 
 
 class JourneyCreate(JourneyBase):
@@ -142,7 +142,7 @@ class Journey(JourneyBase):
 # Journey query filters
 class JourneyFilters(BaseModel):
     """Schema for journey query filters."""
-    from_date: Optional[datetime] = None
-    to_date: Optional[datetime] = None
+    from_date: Optional[date] = None  # Changed from datetime to date
+    to_date: Optional[date] = None  # Changed from datetime to date
     min_confidence: Optional[float] = Field(None, ge=0, le=1)
     entry_pin: Optional[UUID] = None
