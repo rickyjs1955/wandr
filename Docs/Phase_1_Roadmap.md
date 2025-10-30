@@ -1,7 +1,7 @@
 # Phase 1: Foundation - Development Roadmap
 
 **Duration**: Weeks 1-3
-**Status**: Week 2 Complete (Authentication & Session Management) ✅
+**Status**: Week 1 Complete (Foundation) ✅ | Week 2 Complete (Authentication) ✅ | Week 3 In Progress (Deployment Prep)
 **Updated**: 2025-10-31
 
 ---
@@ -12,29 +12,53 @@ Phase 1 establishes the foundational infrastructure for the Spatial Intelligence
 
 ## Goals
 
--  Set up a production-ready development environment
+- ✅ **Set up a production-ready development environment** *(Week 1 Complete)*
+- ✅ **Design and implement complete database schema** *(Week 1 Complete)*
 - ✅ **Implement secure authentication and session management** *(Week 2 Complete)*
--  Build interactive map viewer with GeoJSON support
--  Create camera pin management system with adjacency graph
--  Design and implement complete database schema
--  Set up video storage infrastructure
+- 🔄 **Prepare deployment infrastructure** *(Week 2.5 In Progress)*
+- Build interactive map viewer with GeoJSON support
+- Create camera pin management system with adjacency graph
+- Set up video storage infrastructure
 
 ---
 
 <!-- #region Week 1: Environment & Database Setup -->
 ## Week 1: Environment & Database Setup
 
-### Day 1-2: Development Environment
+**Status**: COMPLETE ✅ *Completed 2025-10-31*
+
+**Summary of Completion**:
+- ✅ **Subphase 1.1** (Day 1-2): Development environment fully configured
+  - Docker Compose with 5 services (PostgreSQL, Redis, MinIO, Backend, Frontend)
+  - FastAPI backend with project structure
+  - React + Vite frontend with TailwindCSS
+  - Code quality tools (Black, Flake8, ESLint, Prettier)
+  - Comprehensive README.md documentation
+
+- ✅ **Subphase 1.2** (Day 3-5): Database schema and ORM models complete
+  - Alembic migrations initialized
+  - All 10 database tables created (Phase 1 + future-use scaffolding)
+  - SQLAlchemy ORM models with proper relationships
+  - Pydantic schemas for all models
+  - Migration tested (up/down operations)
+
+**Git Commits**:
+- `4825b78`: Initial project setup (Subphase 1.1)
+- `bccaafa`: Database schema and migrations (Subphase 1.2)
+
+---
+
+### Day 1-2: Development Environment (Subphase 1.1) ✅ COMPLETE
 
 #### Objectives
-- Set up containerized development environment
-- Configure project structure and dependencies
-- Establish development workflows
+- ✅ Set up containerized development environment
+- ✅ Configure project structure and dependencies
+- ✅ Establish development workflows
 
 #### Tasks
 
 **Backend Setup**
-- [ ] Initialize Python project with FastAPI/Flask
+- [x] Initialize Python project with FastAPI/Flask ✅
   - Create virtual environment
   - Install core dependencies: FastAPI, SQLAlchemy, Alembic, Pydantic
   - Configure project structure: `/app`, `/models`, `/routes`, `/services`
@@ -79,12 +103,12 @@ Phase 1 establishes the foundational infrastructure for the Spatial Intelligence
 
 ---
 
-### Day 3-5: Database Schema Implementation
+### Day 3-5: Database Schema Implementation (Subphase 1.2) ✅ COMPLETE
 
 #### Objectives
-- Design and implement complete database schema for all phases
-- Set up database migrations
-- Create ORM models and relationships
+- ✅ Design and implement complete database schema for all phases
+- ✅ Set up database migrations
+- ✅ Create ORM models and relationships
 
 #### Database Tables
 
@@ -483,6 +507,195 @@ async def logout(session_id: str, response: Response):
 
 **Status: Week 2 (Phase 1.2) COMPLETE** ✅ *Completed 2025-10-31*
 ---
+
+<!-- #endregion -->
+
+<!-- #region Week 2.5: Deployment Infrastructure Preparation -->
+## Week 2.5: Deployment Infrastructure Preparation
+
+**Added**: 2025-10-31
+**Rationale**: Before proceeding to Week 3 (Map Viewer & Camera Management), prepare deployment infrastructure and documentation. This follows "Option B" strategy: create deployment artifacts now, defer actual staging deployment until after Subphase 1.5 (Frontend Auth UI complete) for more meaningful deployment testing.
+
+### Objectives
+- Optimize Docker images for production use
+- Set up CI/CD pipeline with GitHub Actions
+- Document deployment procedures for staging environment
+- Prepare infrastructure as code (optional: Terraform/CloudFormation)
+
+### Why Now?
+- **Current completion**: Development environment (Week 1) ✅, Authentication system (Week 2) ✅
+- **Staging deployment timing**: Defer to post-1.5 when we have:
+  - Complete auth flow (backend + frontend)
+  - Interactive map viewer
+  - Pin management UI
+  - More meaningful end-to-end testing scenarios
+- **Benefits of Option B**:
+  - Deployment artifacts ready when needed
+  - CI/CD pipeline validates code quality continuously
+  - Production Dockerfiles tested early
+  - Reduces deployment friction later
+
+### Tasks
+
+**Production Docker Optimization**
+
+- [ ] **Optimize backend Dockerfile for production**
+  - Multi-stage build to reduce image size
+  - Separate build and runtime stages
+  - Install only production dependencies (no dev tools)
+  - Non-root user for security
+  - Health check endpoint
+  - Proper signal handling for graceful shutdown
+  ```dockerfile
+  # backend/Dockerfile.prod
+  FROM python:3.11-slim as builder
+  # ... build stage
+  FROM python:3.11-slim as runtime
+  # ... runtime stage with minimal dependencies
+  ```
+
+- [ ] **Optimize frontend Dockerfile for production**
+  - Multi-stage build with nginx serving static files
+  - Build optimized production bundle
+  - Configure nginx for SPA routing
+  - Gzip compression
+  - Security headers
+  ```dockerfile
+  # frontend/Dockerfile.prod
+  FROM node:20-alpine as builder
+  # ... build stage
+  FROM nginx:alpine as runtime
+  # ... serve with nginx
+  ```
+
+- [ ] **Create production docker-compose.yml**
+  - Separate from development compose file
+  - Use production Docker images
+  - Proper resource limits
+  - Restart policies
+  - Healthchecks
+  - Logging configuration
+
+**CI/CD Pipeline**
+
+- [ ] **GitHub Actions: Backend Tests & Linting**
+  ```yaml
+  # .github/workflows/backend-ci.yml
+  name: Backend CI
+  on: [push, pull_request]
+  jobs:
+    test:
+      - Run pytest with coverage
+      - Run black, flake8, mypy
+      - Upload coverage reports
+  ```
+
+- [ ] **GitHub Actions: Frontend Tests & Linting**
+  ```yaml
+  # .github/workflows/frontend-ci.yml
+  name: Frontend CI
+  on: [push, pull_request]
+  jobs:
+    test:
+      - Run npm test
+      - Run ESLint, Prettier check
+      - Build production bundle
+  ```
+
+- [ ] **GitHub Actions: Docker Image Build**
+  ```yaml
+  # .github/workflows/docker-build.yml
+  name: Docker Build
+  on: [push]
+  jobs:
+    build:
+      - Build production Docker images
+      - Tag with commit SHA and branch name
+      - Push to container registry (optional for now)
+  ```
+
+- [ ] **GitHub Actions: Integration Tests**
+  ```yaml
+  # .github/workflows/integration.yml
+  name: Integration Tests
+  on: [push, pull_request]
+  jobs:
+    integration:
+      - Spin up docker-compose services
+      - Run end-to-end tests
+      - Tear down services
+  ```
+
+**Deployment Documentation**
+
+- [ ] **Create staging deployment guide**
+  ```markdown
+  # Docs/Deployment/Staging_Guide.md
+  - Infrastructure requirements (AWS/GCP/Azure)
+  - Environment variables for staging
+  - Database setup and migrations
+  - SSL/TLS configuration
+  - Monitoring and logging setup
+  - Backup procedures
+  ```
+
+- [ ] **Create production deployment checklist**
+  ```markdown
+  # Docs/Deployment/Production_Checklist.md
+  - Security hardening steps
+  - Performance optimization
+  - Disaster recovery plan
+  - Scaling considerations
+  ```
+
+- [ ] **Document environment configuration**
+  ```markdown
+  # Docs/Deployment/Environment_Config.md
+  - Required environment variables per service
+  - Secrets management strategy
+  - Database connection pooling settings
+  - Redis configuration for production
+  - MinIO/S3 configuration
+  ```
+
+**Infrastructure as Code (Optional)**
+
+- [ ] **Terraform/Cloud Formation templates (Optional)**
+  - VPC and networking
+  - RDS PostgreSQL instance
+  - ElastiCache Redis
+  - S3 buckets for video storage
+  - Load balancer and auto-scaling
+  - Security groups and IAM roles
+
+  *Note: This is optional for MVP. Can use managed services or manual setup for initial staging deployment.*
+
+### Deliverables
+- ✅ Production-optimized Dockerfiles (backend & frontend)
+- ✅ GitHub Actions CI/CD workflows (tests, linting, build)
+- ✅ Comprehensive deployment documentation
+- ✅ Infrastructure requirements documented
+- ⚪ (Optional) Infrastructure as Code templates
+
+### Success Criteria
+- [ ] Production Docker images build successfully and are <500MB each
+- [ ] CI/CD pipeline runs on every push, failing on test/lint errors
+- [ ] Deployment guide is complete and actionable
+- [ ] All environment variables documented with examples
+- [ ] Health check endpoints return proper status
+
+### Next Steps After This Phase
+- **Resume Week 3 tasks**: Map Viewer & Camera Pin Management
+- **Staging deployment timing**: After Subphase 1.5 (Frontend Auth UI + Map Viewer + Pin Management)
+- **Why defer deployment**: More comprehensive testing scenarios when we have full UI workflows
+
+---
+<!-- #endregion -->
+
+<!-- #region Week 3: Map Viewer & Camera Pin Management (Deferred to Post-Deployment Prep) -->
+## Week 3: Map Viewer & Camera Pin Management
+
+**Note**: This week's tasks will begin after deployment infrastructure preparation is complete.
 
 ### Day 4-5: Role Scaffolding & Authorization
 
@@ -1167,6 +1380,14 @@ Upon completion of Phase 1, the team will proceed to:
 
 ## Version History
 
+**v1.1** - 2025-10-31
+- Marked Week 1 (Subphases 1.1 & 1.2) as COMPLETE ✅
+- Marked Week 2 (Authentication & Session Management) as COMPLETE ✅
+- Added Week 2.5: Deployment Infrastructure Preparation
+- Documented Option B deployment strategy (prepare infrastructure, defer staging to post-1.5)
+- Updated status indicators throughout document
+- Added completion summary with git commit references
+
 **v1.0** - 2025-10-30
 - Initial Phase 1 roadmap
 - Complete task breakdown for Weeks 1-3
@@ -1176,5 +1397,5 @@ Upon completion of Phase 1, the team will proceed to:
 ---
 
 **Document Owner**: Development Team
-**Last Updated**: 2025-10-30
-**Status**: Active Development Planning
+**Last Updated**: 2025-10-31
+**Status**: Active Development (Week 2.5 - Deployment Infrastructure Prep)
