@@ -28,6 +28,17 @@ from app.schemas.camera import (
     VideoCreate,
     VideoUpdate,
     VideoUploadResponse,
+    # Multipart upload schemas
+    MultipartUploadInitiateRequest,
+    MultipartUploadInitiateResponse,
+    MultipartUploadPartUrlRequest,
+    MultipartUploadPartUrlResponse,
+    MultipartUploadPartInfo,
+    MultipartUploadCompleteRequest,
+    MultipartUploadCompleteResponse,
+    MultipartUploadAbortRequest,
+    MultipartUploadAbortResponse,
+    MultipartUploadStatusResponse,
 )
 from app.schemas.cv_pipeline import (
     VisitorProfile,
@@ -68,6 +79,17 @@ __all__ = [
     "VideoCreate",
     "VideoUpdate",
     "VideoUploadResponse",
+    # Multipart upload schemas
+    "MultipartUploadInitiateRequest",
+    "MultipartUploadInitiateResponse",
+    "MultipartUploadPartUrlRequest",
+    "MultipartUploadPartUrlResponse",
+    "MultipartUploadPartInfo",
+    "MultipartUploadCompleteRequest",
+    "MultipartUploadCompleteResponse",
+    "MultipartUploadAbortRequest",
+    "MultipartUploadAbortResponse",
+    "MultipartUploadStatusResponse",
     # CV Pipeline schemas (future use)
     "VisitorProfile",
     "VisitorProfileCreate",

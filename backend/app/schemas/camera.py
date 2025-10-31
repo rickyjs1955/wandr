@@ -99,3 +99,180 @@ class VideoUploadResponse(BaseModel):
     """Schema for video upload response."""
     video: Video
     message: str = "Video uploaded successfully"
+
+
+# ============================================================================
+# Multipart Upload Schemas (Phase 2.3)
+# ============================================================================
+
+class MultipartUploadInitiateRequest(BaseModel):
+    """
+    Request schema for initiating a multipart upload.
+
+    Client provides file metadata before starting the upload.
+    """
+    mall_id: UUID = Field(..., description="Mall ID where video belongs")
+    pin_id: UUID = Field(..., description="Camera pin ID")
+    filename: str = Field(..., min_length=1, max_length=255, description="Original filename")
+    file_size_bytes: int = Field(..., gt=0, description="Total file size in bytes")
+    content_type: str = Field(default="video/mp4", pattern="^video/.*", description="MIME type")
+    checksum_sha256: Optional[str] = Field(
+        None,
+        min_length=64,
+        max_length=64,
+        pattern="^[a-fA-F0-9]{64}$",
+        description="SHA256 checksum of entire file (hex string)"
+    )
+    recorded_at: Optional[datetime] = Field(None, description="When video was recorded")
+    operator_notes: Optional[str] = Field(None, max_length=1000, description="Optional notes")
+
+    # Video properties (if known)
+    video_width: Optional[int] = Field(None, gt=0, le=7680, description="Video width in pixels")
+    video_height: Optional[int] = Field(None, gt=0, le=4320, description="Video height in pixels")
+    video_fps: Optional[float] = Field(None, gt=0, le=120, description="Video frames per second")
+    video_duration_seconds: Optional[int] = Field(None, gt=0, description="Video duration in seconds")
+
+
+class MultipartUploadInitiateResponse(BaseModel):
+    """
+    Response schema for initiated multipart upload.
+
+    Returns upload_id and video_id for tracking the upload session.
+    """
+    upload_id: UUID = Field(..., description="Unique upload session ID")
+    video_id: UUID = Field(..., description="Video database record ID")
+    mall_id: UUID
+    pin_id: UUID
+    filename: str
+    file_size_bytes: int
+    checksum_required: bool = Field(
+        default=True,
+        description="Whether checksum validation will be performed"
+    )
+    expires_at: datetime = Field(..., description="When this upload session expires")
+    message: str = Field(default="Multipart upload initiated. Use upload_id to request part URLs.")
+
+
+class MultipartUploadPartUrlRequest(BaseModel):
+    """
+    Request schema for getting a presigned URL for a specific part.
+
+    Client requests a URL for each part they want to upload.
+    """
+    part_number: int = Field(..., ge=1, le=10000, description="Part number (1-10000)")
+
+
+class MultipartUploadPartUrlResponse(BaseModel):
+    """
+    Response schema with presigned URL for part upload.
+
+    Client uses this URL to upload the part via PUT request.
+    """
+    upload_id: UUID
+    part_number: int
+    presigned_url: str = Field(..., description="Presigned URL for uploading this part")
+    expires_at: datetime = Field(..., description="When this URL expires")
+    instructions: str = Field(
+        default="Upload this part using HTTP PUT to the presigned_url. Include Content-Type header."
+    )
+
+
+class MultipartUploadPartInfo(BaseModel):
+    """
+    Information about a single uploaded part.
+
+    Client provides this after successfully uploading each part.
+    """
+    part_number: int = Field(..., ge=1, le=10000, description="Part number")
+    etag: str = Field(..., min_length=1, description="ETag returned by S3 after upload")
+    size_bytes: Optional[int] = Field(None, gt=0, description="Size of this part in bytes")
+
+
+class MultipartUploadCompleteRequest(BaseModel):
+    """
+    Request schema for completing a multipart upload.
+
+    Client provides list of all successfully uploaded parts.
+    """
+    parts: List[MultipartUploadPartInfo] = Field(
+        ...,
+        min_length=1,
+        max_length=10000,
+        description="List of uploaded parts with their ETags"
+    )
+    final_checksum_sha256: Optional[str] = Field(
+        None,
+        min_length=64,
+        max_length=64,
+        pattern="^[a-fA-F0-9]{64}$",
+        description="SHA256 checksum computed after upload (for validation)"
+    )
+
+
+class MultipartUploadCompleteResponse(BaseModel):
+    """
+    Response schema for completed multipart upload.
+
+    Returns video details and processing job information.
+    """
+    video_id: UUID
+    upload_id: UUID
+    status: str = Field(default="completed", description="Upload status")
+    object_path: str = Field(..., description="S3 object path")
+    file_size_bytes: int
+    checksum_sha256: Optional[str] = Field(None, description="Validated checksum")
+    processing_job_id: Optional[UUID] = Field(
+        None,
+        description="Background job ID for proxy generation"
+    )
+    message: str = Field(
+        default="Upload completed successfully. Video is queued for processing."
+    )
+
+
+class MultipartUploadAbortRequest(BaseModel):
+    """
+    Request schema for aborting a multipart upload.
+
+    Optional reason for abort (for logging/debugging).
+    """
+    reason: Optional[str] = Field(None, max_length=500, description="Reason for aborting")
+
+
+class MultipartUploadAbortResponse(BaseModel):
+    """
+    Response schema for aborted multipart upload.
+
+    Confirms cleanup and provides status.
+    """
+    upload_id: UUID
+    video_id: UUID
+    status: str = Field(default="aborted", description="Upload status")
+    parts_cleaned_up: int = Field(..., description="Number of part files cleaned up")
+    message: str = Field(default="Upload aborted and cleaned up successfully.")
+
+
+class MultipartUploadStatusResponse(BaseModel):
+    """
+    Response schema for upload status query.
+
+    Allows client to check current state of an upload session.
+    """
+    upload_id: UUID
+    video_id: UUID
+    status: str = Field(
+        ...,
+        pattern="^(uploading|completed|aborted|failed)$",
+        description="Current upload status"
+    )
+    mall_id: UUID
+    pin_id: UUID
+    filename: str
+    file_size_bytes: int
+    uploaded_bytes: int = Field(..., description="Bytes uploaded so far")
+    parts_uploaded: int = Field(..., description="Number of parts uploaded")
+    parts_total: Optional[int] = Field(None, description="Expected total parts (if known)")
+    created_at: datetime
+    expires_at: datetime
+    completed_at: Optional[datetime] = None
+    error_message: Optional[str] = None
