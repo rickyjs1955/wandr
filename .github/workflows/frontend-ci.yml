@@ -1,0 +1,85 @@
+name: Frontend CI
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend-ci.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend-ci.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Run ESLint (linting)
+        working-directory: ./frontend
+        run: npm run lint
+
+      - name: Run Prettier (formatting check)
+        working-directory: ./frontend
+        run: npm run format:check
+
+      - name: Run tests
+        working-directory: ./frontend
+        run: npm test -- --coverage --watchAll=false
+        continue-on-error: true  # Don't fail if no tests yet
+
+      - name: Build production bundle
+        working-directory: ./frontend
+        run: npm run build
+
+      - name: Check bundle size
+        working-directory: ./frontend
+        run: |
+          BUNDLE_SIZE=$(du -sh dist | cut -f1)
+          echo "Bundle size: $BUNDLE_SIZE"
+          # Add bundle size check here if needed
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          directory: ./frontend/coverage
+          flags: frontend
+          name: frontend-coverage
+        continue-on-error: true
+
+  security-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Run npm audit
+        working-directory: ./frontend
+        run: npm audit --audit-level=moderate
+        continue-on-error: true  # Don't fail build on vulnerabilities, just report

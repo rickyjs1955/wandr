@@ -1,0 +1,82 @@
+# Production Dockerfile for FastAPI Backend
+# Multi-stage build to minimize image size and improve security
+
+# Stage 1: Builder - Install dependencies
+FROM python:3.11-slim as builder
+
+# Set working directory
+WORKDIR /build
+
+# Install system dependencies needed for building Python packages
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements file
+COPY requirements.txt .
+
+# Create virtual environment and install dependencies
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Install Python dependencies
+# Use --no-cache-dir to reduce image size
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Stage 2: Runtime - Minimal production image
+FROM python:3.11-slim as runtime
+
+# Set working directory
+WORKDIR /app
+
+# Install only runtime dependencies (PostgreSQL client for health checks)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    postgresql-client \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy virtual environment from builder
+COPY --from=builder /opt/venv /opt/venv
+
+# Set environment variables
+ENV PATH="/opt/venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH=/app
+
+# Create non-root user for security
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# Copy application code
+COPY --chown=appuser:appuser ./app /app/app
+COPY --chown=appuser:appuser ./alembic /app/alembic
+COPY --chown=appuser:appuser ./alembic.ini /app/alembic.ini
+
+# Create directories for logs and temp files
+RUN mkdir -p /app/logs /app/tmp && \
+    chown -R appuser:appuser /app/logs /app/tmp
+
+# Switch to non-root user
+USER appuser
+
+# Expose port
+EXPOSE 8000
+
+# Health check endpoint
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8000/api/v1/auth/health || exit 1
+
+# Run application with production settings
+# Use --workers for production (based on CPU cores)
+# Use --host 0.0.0.0 to accept external connections
+# Use --no-access-log to reduce I/O in production (use nginx for access logs)
+CMD ["uvicorn", "app.main:app", \
+     "--host", "0.0.0.0", \
+     "--port", "8000", \
+     "--workers", "4", \
+     "--log-level", "info", \
+     "--no-access-log", \
+     "--proxy-headers", \
+     "--forwarded-allow-ips", "*"]

@@ -1,0 +1,72 @@
+name: Integration Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  integration-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create .env file for testing
+        run: |
+          cat > .env << EOF
+          POSTGRES_DB=spatial_intel
+          POSTGRES_USER=spatial_user
+          POSTGRES_PASSWORD=test_password
+          REDIS_PASSWORD=test_redis_password
+          MINIO_ROOT_USER=minioadmin
+          MINIO_ROOT_PASSWORD=minioadmin123
+          SECRET_KEY=test-secret-key-for-integration-tests
+          DATABASE_URL=postgresql://spatial_user:test_password@postgres:5432/spatial_intel
+          REDIS_URL=redis://:test_redis_password@redis:6379/0
+          MINIO_ENDPOINT=minio:9000
+          MINIO_ACCESS_KEY=minioadmin
+          MINIO_SECRET_KEY=minioadmin123
+          ENVIRONMENT=test
+          CORS_ORIGINS=http://localhost:5173
+          EOF
+
+      - name: Start services with docker-compose
+        run: docker-compose up -d --build
+
+      - name: Wait for services to be healthy
+        run: |
+          echo "Waiting for services to be healthy..."
+          timeout 120 bash -c 'until docker-compose ps | grep -q "healthy"; do sleep 2; done'
+          sleep 10  # Additional wait for services to fully initialize
+
+      - name: Check service status
+        run: docker-compose ps
+
+      - name: Check backend logs
+        if: always()
+        run: docker-compose logs backend
+
+      - name: Run database migrations
+        run: |
+          docker-compose exec -T backend alembic upgrade head
+
+      - name: Test backend health endpoint
+        run: |
+          curl -f http://localhost:8000/api/v1/auth/health || exit 1
+
+      - name: Test frontend
+        run: |
+          curl -f http://localhost:5173 || exit 1
+
+      - name: Run integration tests (if available)
+        working-directory: ./backend
+        run: |
+          docker-compose exec -T backend pytest tests/integration/ -v
+        continue-on-error: true  # Don't fail if no integration tests yet
+
+      - name: Cleanup
+        if: always()
+        run: docker-compose down -v
