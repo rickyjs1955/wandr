@@ -6,6 +6,20 @@ A spatial intelligence platform that enables mall operators to track visitor jou
 
 Transform how property owners understand and optimize visitor flow by combining computer vision, spatial mapping, and behavioral analytics. The platform tracks anonymous visitor journeys using outfit characteristics as identifiers, providing unprecedented insights into customer behavior patterns.
 
+## 🎉 Phase 2 Complete: Enterprise-Grade Video Management
+
+Phase 2 has been successfully completed, delivering a production-ready video management system:
+
+- ✅ **Multipart Upload System**: Handle videos up to 2GB with resume capability and checksum deduplication
+- ✅ **Distributed Processing**: Celery-based background job queue with Redis broker
+- ✅ **FFmpeg Pipeline**: Automatic proxy generation (480p) and thumbnail extraction
+- ✅ **Secure Streaming**: Auto-refreshing signed URLs with seamless playback continuity
+- ✅ **Real-time Monitoring**: Job status tracking, system statistics, and stuck job detection
+- ✅ **Production UI**: Drag-and-drop upload, progress tracking, and custom video player
+- ✅ **Test Coverage**: E2E integration tests and performance benchmarks
+
+**Ready for Phase 3**: Computer vision integration for person detection and outfit-based re-identification.
+
 ## Tech Stack
 
 ### Backend
@@ -168,9 +182,24 @@ wandr/
 **Backend tests:**
 ```bash
 cd backend
-pytest                          # Run all tests
-pytest --cov=app               # Run with coverage
-pytest app/tests/test_auth.py  # Run specific test file
+
+# Unit tests
+pytest app/tests/unit/ -v
+
+# Integration tests (includes E2E video pipeline)
+pytest app/tests/integration/ -v
+
+# Performance tests (lightweight benchmarks)
+pytest app/tests/performance/ -v -m benchmark
+
+# Heavy benchmarks (opt-in, takes ~1 hour)
+RUN_HEAVY_BENCHMARKS=1 pytest app/tests/performance/test_proxy_benchmarks.py::TestProxyGeneration::test_30min_1080p_30fps_benchmark -v
+
+# All tests with coverage
+pytest --cov=app --cov-report=html
+
+# Specific test file
+pytest app/tests/test_upload_service.py -v
 ```
 
 **Frontend tests:**
@@ -239,51 +268,136 @@ Once the backend is running, visit:
 - ReDoc: http://localhost:8000/api/redoc
 - OpenAPI JSON: http://localhost:8000/api/openapi.json
 
-## Current Features (Phase 1)
+### Key API Endpoints (Phase 2)
 
-- [x] Docker-based development environment
+**Video Upload:**
+- `POST /videos/upload/initiate` - Start multipart upload
+- `POST /videos/upload/{upload_id}/part-url` - Get presigned URL for part
+- `POST /videos/upload/{upload_id}/complete` - Finalize upload
+
+**Video Management:**
+- `GET /videos` - List videos with filters
+- `GET /videos/{video_id}` - Get video details
+- `GET /videos/{video_id}/stream/{stream_type}` - Get streaming URL
+- `GET /videos/{video_id}/thumbnail` - Get thumbnail URL
+- `DELETE /videos/{video_id}` - Delete video
+
+**Admin Monitoring:**
+- `GET /admin/stats` - System statistics
+- `GET /admin/jobs` - List processing jobs
+- `POST /admin/cleanup/stuck-jobs` - Cleanup stuck jobs
+- `POST /admin/cleanup/old-jobs` - Cleanup old jobs
+
+## Current Features
+
+### Infrastructure (Complete)
+- [x] Docker-based development environment with Docker Compose
 - [x] FastAPI backend with SQLAlchemy ORM
-- [x] React frontend with TailwindCSS
-- [x] PostgreSQL database with Alembic migrations
-- [x] Redis session management
-- [x] MinIO object storage
-- [ ] Authentication system (in progress)
-- [ ] Mall and map management (in progress)
-- [ ] Camera pin management (in progress)
-- [ ] Video upload and storage (in progress)
+- [x] React 18 frontend with Vite and TailwindCSS
+- [x] PostgreSQL 15 database with Alembic migrations
+- [x] Redis 7 for session management and Celery broker
+- [x] MinIO object storage for video files
+
+### Phase 2: Video Management (Complete)
+- [x] **Enhanced Database Schema** (Phase 2.1)
+  - Video model with multipart upload support
+  - Processing job tracking with Celery task IDs
+  - JSONB result data for flexible metadata
+
+- [x] **Object Storage Infrastructure** (Phase 2.2)
+  - MinIO integration with bucket management
+  - Multipart upload with part namespacing
+  - Presigned URL generation for secure access
+
+- [x] **Multipart Upload API** (Phase 2.3)
+  - Initiate, upload parts, complete workflow
+  - SHA-256 checksum deduplication
+  - Abort and cleanup functionality
+
+- [x] **Background Job Queue** (Phase 2.4)
+  - Celery worker with Redis broker
+  - Job status tracking and progress monitoring
+  - Proxy generation queue management
+
+- [x] **FFmpeg Proxy Generation** (Phase 2.5)
+  - 480p proxy video creation
+  - Thumbnail extraction at 5-second mark
+  - Audio stream detection and conditional encoding
+  - Metadata extraction (resolution, fps, duration)
+
+- [x] **Video Streaming & Management APIs** (Phase 2.6)
+  - Video list, detail, and delete endpoints
+  - Signed URL generation for streaming
+  - Thumbnail URL generation
+  - Proxy and original video streaming
+
+- [x] **Admin Monitoring & Maintenance** (Phase 2.7)
+  - System statistics endpoint
+  - Stuck job detection and cleanup
+  - Job listing and queue statistics
+  - Manual cleanup triggers
+
+- [x] **Frontend Upload Components** (Phase 2.8)
+  - Drag-and-drop video upload
+  - SHA-256 checksum calculation with progress
+  - Upload progress tracking
+  - Processing status polling with real-time updates
+  - React Router navigation
+
+- [x] **Frontend Video Player** (Phase 2.9)
+  - Custom video player with controls
+  - Auto-refreshing signed URLs
+  - Seamless playback during URL refresh
+  - Playback state preservation
+
+- [x] **Testing & Validation** (Phase 2.10)
+  - End-to-end integration tests
+  - Performance benchmarks
+  - Test fixtures and utilities
+
+### Pending Features (Phase 1 - Deferred)
+- [ ] Authentication system
+- [ ] Mall and map management with GeoJSON
+- [ ] Camera pin management
 
 ## Roadmap
 
-### Phase 1: Foundation (Weeks 1-3) - IN PROGRESS
-- Initial project setup with Docker
-- Authentication and authorization
-- Map management with GeoJSON
-- Camera pin management
-- Video upload infrastructure
+### ✅ Phase 2: Video Management (Complete)
+All 10 sub-phases completed:
+- Phase 2.1: Database Schema & Migrations
+- Phase 2.2: Object Storage Infrastructure
+- Phase 2.3: Multipart Upload API
+- Phase 2.4: Background Job Queue (Celery + Redis)
+- Phase 2.5: FFmpeg Proxy Generation Pipeline
+- Phase 2.6: Video Streaming & Management APIs
+- Phase 2.7: Admin Monitoring & Stuck Job Watchdog
+- Phase 2.8: Frontend Upload Components
+- Phase 2.9: Frontend Video Player & Management UI
+- Phase 2.10: Integration Testing & Performance Validation
 
-### Phase 2: Video Management (Weeks 4-5)
-- Video processing pipeline
-- FFmpeg integration for proxy generation
-- Background job queue with Celery
+### Phase 3: Computer Vision - Part 1 (Next)
+- Person detection with YOLOv8/RT-DETR
+- Garment classification (top/bottom/shoes)
+- CIELAB color space conversion and quantization
+- Visual embedding extraction (CLIP-small)
+- Physique attribute extraction
+- Tracklet data model and storage
 
-### Phase 3: Computer Vision - Part 1 (Weeks 6-7)
-- Person detection integration
-- Garment classification
-- Visual embedding extraction
-- Tracklet generation
+### Phase 4: Computer Vision - Part 2
+- Within-camera tracking (ByteTrack/DeepSORT)
+- Tracklet generation pipeline
+- Outfit vector computation (128D embedding)
+- Single-camera footage testing
 
-### Phase 4: Computer Vision - Part 2 (Weeks 8-9)
-- Within-camera tracking
-- Outfit vector computation
-- Single-camera testing
+### Phase 5: Cross-Camera Re-ID
+- Multi-signal scoring (outfit + time + adjacency + physique)
+- Candidate retrieval with pre-filters
+- Association decision logic
+- Conflict resolution
+- Journey construction algorithm
 
-### Phase 5: Cross-Camera Re-ID (Weeks 10-11)
-- Multi-signal scoring system
-- Journey construction
-- Confidence scoring
-
-### Phases 6-9: Integration, Reporting, Testing, Documentation (Weeks 12-17)
-- See [CLAUDE.md](CLAUDE.md) for complete roadmap
+### Phases 6-9: Integration, Optimization, Reporting, Testing
+See [CLAUDE.md](CLAUDE.md) for complete technical roadmap and specifications
 
 ## Contributing
 
@@ -350,5 +464,6 @@ For questions or support, please open an issue in the repository.
 
 ---
 
-**Version**: 0.1.0 (Phase 1 - In Development)
-**Last Updated**: 2025-10-30
+**Version**: 0.2.0 (Phase 2 - Complete)
+**Last Updated**: 2025-11-01
+**Status**: Video management system fully operational, ready for computer vision integration
