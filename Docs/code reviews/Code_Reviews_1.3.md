@@ -16,3 +16,7 @@
   Pin forms expose basic fields but there’s no way to view or edit `adjacent_to`, so the adjacency graph deliverable remains unmet.
 
 ---SEPARATOR---
+
+- Fixes validated. Pin APIs now read `location_lat`/`location_lng`, frontend form + markers follow suit, and the shared `api` client resolves the previous import error. The two medium items (map upload UI, adjacency management) remain deferred as noted.
+
+---SEPARATOR---

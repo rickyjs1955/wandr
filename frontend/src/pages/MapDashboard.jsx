@@ -28,7 +28,11 @@ function MapDashboard() {
     pin_type: 'normal',
     camera_fps: 15,
     camera_note: '',
+    adjacent_to: [],
   });
+  const [showMapUpload, setShowMapUpload] = useState(false);
+  const [mapUploadData, setMapUploadData] = useState(null);
+  const [mapUploadError, setMapUploadError] = useState(null);
 
   const handleLogout = async () => {
     const result = await logout();
@@ -102,6 +106,7 @@ function MapDashboard() {
       pin_type: pin.pin_type,
       camera_fps: pin.camera_fps,
       camera_note: pin.camera_note || '',
+      adjacent_to: pin.adjacent_to || [],
     });
     setShowPinForm(true);
   };
@@ -162,6 +167,71 @@ function MapDashboard() {
     }
   };
 
+  // Handle map file selection
+  const handleMapFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const json = JSON.parse(event.target.result);
+
+        // Basic GeoJSON validation
+        if (json.type !== 'FeatureCollection') {
+          setMapUploadError('Invalid GeoJSON: must be a FeatureCollection');
+          setMapUploadData(null);
+          return;
+        }
+
+        if (!Array.isArray(json.features)) {
+          setMapUploadError('Invalid GeoJSON: features must be an array');
+          setMapUploadData(null);
+          return;
+        }
+
+        setMapUploadData(json);
+        setMapUploadError(null);
+      } catch (err) {
+        setMapUploadError('Invalid JSON file: ' + err.message);
+        setMapUploadData(null);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  // Handle map upload submission
+  const handleMapUpload = async () => {
+    if (!mapUploadData) return;
+
+    try {
+      await mallService.updateMallMap(user.mall_id, mapUploadData);
+      setGeojson(mapUploadData);
+      setShowMapUpload(false);
+      setMapUploadData(null);
+      setMapUploadError(null);
+    } catch (err) {
+      console.error('Error uploading map:', err);
+      setMapUploadError(err.response?.data?.detail || 'Failed to upload map');
+    }
+  };
+
+  // Toggle adjacency relationship
+  const toggleAdjacency = (pinId) => {
+    const current = pinFormData.adjacent_to || [];
+    if (current.includes(pinId)) {
+      setPinFormData({
+        ...pinFormData,
+        adjacent_to: current.filter(id => id !== pinId),
+      });
+    } else {
+      setPinFormData({
+        ...pinFormData,
+        adjacent_to: [...current, pinId],
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -199,6 +269,12 @@ function MapDashboard() {
         <div className="flex items-center space-x-4">
           <span className="text-sm text-gray-700">{user?.username}</span>
           <button
+            onClick={() => setShowMapUpload(true)}
+            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+          >
+            {geojson ? 'Update Map' : 'Upload Map'}
+          </button>
+          <button
             onClick={() => {
               setPinFormData({
                 name: '',
@@ -208,6 +284,7 @@ function MapDashboard() {
                 pin_type: 'normal',
                 camera_fps: 15,
                 camera_note: '',
+                adjacent_to: [],
               });
               setSelectedPin(null);
               setShowPinForm(true);
@@ -239,11 +316,20 @@ function MapDashboard() {
             />
           ) : (
             <div className="flex items-center justify-center h-full bg-gray-100">
-              <div className="text-center">
-                <p className="text-gray-600 mb-4">No map uploaded yet</p>
-                <p className="text-sm text-gray-500">
-                  Upload a GeoJSON floor plan to get started
+              <div className="text-center max-w-md">
+                <div className="text-6xl mb-4">🗺️</div>
+                <h2 className="text-xl font-bold text-gray-800 mb-2">
+                  No Map Uploaded
+                </h2>
+                <p className="text-gray-600 mb-6">
+                  Upload a GeoJSON floor plan to visualize your mall layout and place camera pins
                 </p>
+                <button
+                  onClick={() => setShowMapUpload(true)}
+                  className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 font-medium"
+                >
+                  Upload GeoJSON Map
+                </button>
               </div>
             </div>
           )}
@@ -387,6 +473,45 @@ function MapDashboard() {
                 />
               </div>
 
+              {/* Adjacency Management */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Adjacent Cameras
+                </label>
+                <p className="text-xs text-gray-500 mb-2">
+                  Select cameras that are directly reachable from this location
+                </p>
+                <div className="max-h-40 overflow-y-auto border border-gray-300 rounded p-2">
+                  {pins.filter(p => p.id !== selectedPin?.id).length === 0 ? (
+                    <p className="text-sm text-gray-500 text-center py-2">
+                      No other pins available
+                    </p>
+                  ) : (
+                    pins
+                      .filter(p => p.id !== selectedPin?.id)
+                      .map(pin => (
+                        <label
+                          key={pin.id}
+                          className="flex items-center space-x-2 py-1 hover:bg-gray-50 cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={(pinFormData.adjacent_to || []).includes(pin.id)}
+                            onChange={() => toggleAdjacency(pin.id)}
+                            className="rounded"
+                          />
+                          <span className="text-sm">
+                            {pin.name} ({pin.pin_type})
+                          </span>
+                        </label>
+                      ))
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  {(pinFormData.adjacent_to || []).length} camera(s) selected
+                </p>
+              </div>
+
               <div className="flex space-x-2 pt-4">
                 <button
                   type="submit"
@@ -409,6 +534,115 @@ function MapDashboard() {
           </div>
         )}
       </div>
+
+      {/* Map Upload Modal */}
+      {showMapUpload && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold">
+                  {geojson ? 'Update Map' : 'Upload Map'}
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowMapUpload(false);
+                    setMapUploadData(null);
+                    setMapUploadError(null);
+                  }}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    GeoJSON File
+                  </label>
+                  <input
+                    type="file"
+                    accept=".json,.geojson"
+                    onChange={handleMapFileChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Upload a GeoJSON FeatureCollection (.json or .geojson)
+                  </p>
+                </div>
+
+                {mapUploadError && (
+                  <div className="bg-red-50 border border-red-200 rounded p-3">
+                    <p className="text-sm text-red-800">{mapUploadError}</p>
+                  </div>
+                )}
+
+                {mapUploadData && (
+                  <div className="bg-green-50 border border-green-200 rounded p-3">
+                    <p className="text-sm text-green-800 mb-2">
+                      ✓ Valid GeoJSON loaded
+                    </p>
+                    <p className="text-xs text-gray-600">
+                      Type: {mapUploadData.type}
+                    </p>
+                    <p className="text-xs text-gray-600">
+                      Features: {mapUploadData.features.length}
+                    </p>
+                  </div>
+                )}
+
+                {mapUploadData && (
+                  <div className="border border-gray-300 rounded p-3 bg-gray-50">
+                    <p className="text-xs font-medium text-gray-700 mb-2">
+                      Preview (first 500 characters):
+                    </p>
+                    <pre className="text-xs text-gray-600 overflow-x-auto">
+                      {JSON.stringify(mapUploadData, null, 2).substring(0, 500)}...
+                    </pre>
+                  </div>
+                )}
+
+                <div className="bg-blue-50 border border-blue-200 rounded p-3">
+                  <p className="text-sm font-medium text-blue-800 mb-2">
+                    GeoJSON Format Requirements:
+                  </p>
+                  <ul className="text-xs text-blue-700 space-y-1 list-disc list-inside">
+                    <li>Must be a FeatureCollection</li>
+                    <li>Must contain a features array</li>
+                    <li>Use WGS84 coordinate system (longitude, latitude)</li>
+                    <li>Test your GeoJSON at <a href="https://geojson.io" target="_blank" rel="noopener noreferrer" className="underline">geojson.io</a></li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="flex space-x-3 mt-6">
+                <button
+                  onClick={() => {
+                    setShowMapUpload(false);
+                    setMapUploadData(null);
+                    setMapUploadError(null);
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleMapUpload}
+                  disabled={!mapUploadData}
+                  className={`flex-1 px-4 py-2 rounded ${
+                    mapUploadData
+                      ? 'bg-green-600 text-white hover:bg-green-700'
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }`}
+                >
+                  {geojson ? 'Update Map' : 'Upload Map'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
