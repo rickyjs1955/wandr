@@ -276,3 +276,119 @@ class MultipartUploadStatusResponse(BaseModel):
     expires_at: datetime
     completed_at: Optional[datetime] = None
     error_message: Optional[str] = None
+
+
+# ============================================================================
+# Video Management Schemas (Phase 2.6)
+# ============================================================================
+
+class VideoDetailResponse(BaseModel):
+    """
+    Detailed video information response.
+
+    Includes video metadata, processing status, and related entities.
+    """
+    id: UUID
+    mall_id: UUID
+    pin_id: UUID
+    pin_name: Optional[str] = None
+
+    # File information
+    original_filename: str
+    original_path: str
+    file_size_bytes: int
+    checksum_sha256: Optional[str] = None
+
+    # Proxy and thumbnail
+    proxy_path: Optional[str] = None
+    proxy_size_bytes: Optional[int] = None
+    thumbnail_path: Optional[str] = None
+
+    # Video metadata
+    width: Optional[int] = None
+    height: Optional[int] = None
+    fps: Optional[float] = None
+    duration_seconds: Optional[float] = None
+    codec: Optional[str] = None
+
+    # Processing status
+    processing_status: str = Field(
+        ...,
+        pattern="^(pending|processing|completed|failed)$",
+        description="Processing status"
+    )
+    processing_job_id: Optional[UUID] = None
+    processing_error: Optional[str] = None
+    processing_started_at: Optional[datetime] = None
+    processing_completed_at: Optional[datetime] = None
+
+    # Timestamps
+    uploaded_at: datetime
+    recorded_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+
+    # Notes
+    operator_notes: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class VideoListItem(BaseModel):
+    """
+    Compact video information for list responses.
+    """
+    id: UUID
+    mall_id: UUID
+    pin_id: UUID
+    pin_name: Optional[str] = None
+
+    original_filename: str
+    file_size_bytes: int
+    duration_seconds: Optional[float] = None
+
+    # Processing status
+    processing_status: str
+    has_proxy: bool = Field(default=False, description="Whether proxy video exists")
+    has_thumbnail: bool = Field(default=False, description="Whether thumbnail exists")
+
+    uploaded_at: datetime
+    recorded_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class VideoListResponse(BaseModel):
+    """
+    Paginated list of videos.
+    """
+    videos: List[VideoListItem]
+    total: int = Field(..., description="Total number of videos matching filters")
+    page: int = Field(..., ge=1, description="Current page number")
+    page_size: int = Field(..., ge=1, le=100, description="Number of items per page")
+    total_pages: int = Field(..., description="Total number of pages")
+
+
+class VideoStreamUrlResponse(BaseModel):
+    """
+    Response with presigned URL for video streaming.
+    """
+    video_id: UUID
+    url: str = Field(..., description="Presigned URL for streaming")
+    expires_at: datetime = Field(..., description="When the URL expires")
+    content_type: str = Field(default="video/mp4")
+    file_size_bytes: Optional[int] = None
+    duration_seconds: Optional[float] = None
+
+
+class VideoDeleteResponse(BaseModel):
+    """
+    Response after deleting a video.
+    """
+    video_id: UUID
+    deleted: bool = Field(default=True)
+    files_deleted: List[str] = Field(
+        default_factory=list,
+        description="List of file paths deleted from storage"
+    )
+    message: str = Field(default="Video deleted successfully")
