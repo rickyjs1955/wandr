@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.services.upload_service import get_upload_service, UploadService
+from app.services.job_service import get_job_service, JobService
 from app.schemas import (
     MultipartUploadInitiateRequest,
     MultipartUploadInitiateResponse,
@@ -211,6 +212,7 @@ def complete_multipart_upload(
     video_id: UUID,
     request: MultipartUploadCompleteRequest,
     upload_service: UploadService = Depends(get_upload_service),
+    job_service: JobService = Depends(get_job_service),
 ) -> MultipartUploadCompleteResponse:
     """Complete a multipart upload."""
     try:
@@ -231,8 +233,11 @@ def complete_multipart_upload(
             final_checksum_sha256=request.final_checksum_sha256,
         )
 
-        # TODO: Queue background job for proxy generation (Phase 2.5)
-        processing_job_id = None
+        # Queue background job for proxy generation
+        processing_job = job_service.queue_proxy_generation(
+            video_id=video_id,
+            priority=5,  # Default priority
+        )
 
         return MultipartUploadCompleteResponse(
             video_id=result["video_id"],
@@ -241,7 +246,7 @@ def complete_multipart_upload(
             object_path=result["object_path"],
             file_size_bytes=result["file_size_bytes"],
             checksum_sha256=result.get("checksum_sha256"),
-            processing_job_id=processing_job_id,
+            processing_job_id=processing_job.id,
         )
 
     except ValueError as e:
