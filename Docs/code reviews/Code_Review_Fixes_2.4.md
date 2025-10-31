@@ -324,8 +324,8 @@ GET /videos/{video_id}
 
 **State Transitions:**
 ```
-pending ’ processing ’ completed
-              “
+pending ï¿½ processing ï¿½ completed
+              ï¿½
             failed
 ```
 
@@ -467,7 +467,7 @@ pytest app/tests/test_video_tasks.py -v
 
 **POST /api/malls/{mall_id}/pins/{pin_id}/uploads/complete**
 - **Before:** Queued job but video stayed in "pending" state forever
-- **After:** Video transitions to "processing" ’ "completed"/"failed"
+- **After:** Video transitions to "processing" ï¿½ "completed"/"failed"
 - **Response:** Now includes accurate `processing_job_id`
 
 **GET /api/videos/{video_id}**
@@ -625,4 +625,4 @@ video.processing_status = "completed"  # Both for clarity
 **Date:** 2025-10-31
 **Status:**  All Issues Resolved - Ready for Testing
 
----SEPARATOR---
+---END---
