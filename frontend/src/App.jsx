@@ -9,6 +9,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import MapDashboard from './pages/MapDashboard';
 
 function App() {
   return (
@@ -27,12 +28,20 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/map"
+            element={
+              <ProtectedRoute>
+                <MapDashboard />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Default redirect */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/" element={<Navigate to="/map" replace />} />
 
-          {/* 404 Not Found - redirect to dashboard */}
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          {/* 404 Not Found - redirect to map */}
+          <Route path="*" element={<Navigate to="/map" replace />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

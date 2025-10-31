@@ -35,6 +35,11 @@ class Mall(MallBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+class GeoJSONMap(BaseModel):
+    """Schema for GeoJSON map upload/response."""
+    geojson: Dict[str, Any]
+
+
 # Store schemas (future use)
 class StoreBase(BaseModel):
     """Base store schema."""
