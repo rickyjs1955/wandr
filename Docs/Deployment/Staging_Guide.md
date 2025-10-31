@@ -144,6 +144,83 @@ python3 -c "import secrets; print('REDIS_PASSWORD=' + secrets.token_urlsafe(24))
 python3 -c "import secrets; print('MINIO_ROOT_PASSWORD=' + secrets.token_urlsafe(24))"
 ```
 
+**Security Best Practices:**
+
+⚠️ **IMPORTANT**: The `.env.prod` file contains sensitive credentials and should NEVER be committed to version control.
+
+```bash
+# Verify .env.prod is in .gitignore
+grep -q "\.env\.prod" .gitignore && echo "✅ .env.prod is gitignored" || echo "❌ Add .env.prod to .gitignore!"
+
+# Set restrictive permissions on environment file
+chmod 600 .env.prod
+
+# Verify ownership (should be owned by deployment user)
+ls -la .env.prod
+```
+
+**For Shared Staging Environments:**
+
+1. **Secret Management**: Consider using a secrets management service:
+   - AWS Secrets Manager
+   - HashiCorp Vault
+   - Google Cloud Secret Manager
+   - Azure Key Vault
+
+2. **Port Exposure**: By default, `docker-compose.prod.yml` exposes database and Redis ports on the host:
+   ```yaml
+   # SECURITY CONSIDERATION:
+   postgres:
+     ports:
+       - "5432:5432"  # ⚠️ Exposed to host network
+
+   redis:
+     ports:
+       - "6379:6379"  # ⚠️ Exposed to host network
+
+   minio:
+     ports:
+       - "9000:9000"  # ⚠️ Exposed to host network
+       - "9001:9001"  # ⚠️ Exposed to host network
+   ```
+
+   **To lock down ports** (recommended for shared staging):
+   - Remove `ports:` sections for internal services
+   - Services will still be accessible within Docker network
+   - Only expose ports that need external access (nginx, backend API)
+
+   Example secure configuration:
+   ```yaml
+   postgres:
+     # ports:  # REMOVED - only accessible via Docker network
+     #   - "5432:5432"
+     networks:
+       - app-network
+
+   redis:
+     # ports:  # REMOVED - only accessible via Docker network
+     #   - "6379:6379"
+     networks:
+       - app-network
+   ```
+
+3. **Firewall Rules**: If ports remain exposed, configure host firewall:
+   ```bash
+   # Allow only specific IPs to access database ports
+   sudo ufw allow from YOUR_OFFICE_IP to any port 5432 proto tcp
+   sudo ufw allow from YOUR_OFFICE_IP to any port 6379 proto tcp
+
+   # Block all other access to these ports
+   sudo ufw deny 5432/tcp
+   sudo ufw deny 6379/tcp
+   ```
+
+4. **Access Audit**: Regularly review who has access to:
+   - `.env.prod` file
+   - Server SSH keys
+   - Cloud console credentials
+   - Docker daemon
+
 ### 5. Set Up SSL/TLS (HTTPS)
 
 #### Option A: Let's Encrypt (Recommended)

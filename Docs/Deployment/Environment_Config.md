@@ -337,19 +337,21 @@ MINIO_ROOT_PASSWORD=zR8qP5wL2mN9vX6cK3jY1fH4gD7aS0bT
 
 ---
 
-### MINIO_USE_SSL
-**Purpose**: Enable HTTPS for object storage
+### MINIO_SECURE
+**Purpose**: Enable HTTPS for object storage connections
 **Type**: Boolean
 **Required**: No
 **Default**: `false`
 
 ```bash
-# Development
-MINIO_USE_SSL=false
+# Development (HTTP)
+MINIO_SECURE=false
 
-# Production
-MINIO_USE_SSL=true
+# Production (HTTPS with TLS)
+MINIO_SECURE=true
 ```
+
+**Note**: Set to `true` when MinIO is behind a reverse proxy with SSL/TLS termination.
 
 ---
 
@@ -457,7 +459,7 @@ REDIS_PASSWORD=dev_redis_password
 MINIO_ENDPOINT=minio:9000
 MINIO_ROOT_USER=minioadmin
 MINIO_ROOT_PASSWORD=minioadmin123
-MINIO_USE_SSL=false
+MINIO_SECURE=false
 
 # Security (use placeholder in dev)
 SECRET_KEY=dev-secret-key-change-in-production
@@ -494,7 +496,7 @@ REDIS_PASSWORD=STRONG_REDIS_PASS
 MINIO_ENDPOINT=s3.amazonaws.com
 MINIO_ROOT_USER=AKIAIOSFODNN7EXAMPLE
 MINIO_ROOT_PASSWORD=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
-MINIO_USE_SSL=true
+MINIO_SECURE=true
 
 # Security
 SECRET_KEY=GENERATE_WITH_SECRETS_MODULE_32_CHARS_MIN

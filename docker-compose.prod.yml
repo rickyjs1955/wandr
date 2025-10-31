@@ -16,7 +16,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "5432:5432"  # ⚠️ SECURITY: Exposes DB to host. For shared staging, comment out this section.
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-spatial_user} -d ${POSTGRES_DB:-spatial_intel}"]
       interval: 10s
@@ -53,7 +53,7 @@ services:
     volumes:
       - redis_data:/data
     ports:
-      - "6379:6379"
+      - "6379:6379"  # ⚠️ SECURITY: Exposes Redis to host. For shared staging, comment out this section.
     healthcheck:
       test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
       interval: 10s
@@ -87,8 +87,8 @@ services:
     volumes:
       - minio_data:/data
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "9000:9000"  # ⚠️ SECURITY: API port. For shared staging, comment out this section.
+      - "9001:9001"  # ⚠️ SECURITY: Console port. For shared staging, comment out this section.
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 30s
@@ -129,7 +129,7 @@ services:
       MINIO_ENDPOINT: minio:9000
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
-      MINIO_USE_SSL: "false"
+      MINIO_SECURE: "false"  # Use "true" for HTTPS connections
 
       # Security
       SECRET_KEY: ${SECRET_KEY:?SECRET_KEY is required}
