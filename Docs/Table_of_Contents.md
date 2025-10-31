@@ -1,7 +1,7 @@
 Phase 1  : Foundations
-Phase 1.1:
-Phase 1.2:
-Phase 1.3:
+Phase 1.1: Development Environment Setup
+Phase 1.2: Database Schema & ORM Models
+Phase 1.3: Map Viewer & Camera Pin Management
 Phase 2  : Video Management
 Phase 2.1: Database Schema & Migrations
 Phase 2.2: Object Storage Infrastructure
