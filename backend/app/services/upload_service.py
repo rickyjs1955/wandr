@@ -123,11 +123,11 @@ class UploadService:
             operator_notes=operator_notes,
             uploaded_by_user_id=uploaded_by_user_id,
             upload_status="uploading",
-            video_width=video_width,
-            video_height=video_height,
-            video_fps=video_fps,
-            video_duration_seconds=video_duration_seconds,
-            uploaded_at=None,  # Will be set on completion
+            width=video_width,
+            height=video_height,
+            fps=video_fps,
+            duration_seconds=video_duration_seconds,
+            # uploaded_at: let DB default populate (datetime.utcnow)
             processing_status="pending",
             processed=False,  # Legacy field
         )
@@ -200,6 +200,7 @@ class UploadService:
         expires = timedelta(hours=self.PART_URL_EXPIRY_HOURS)
         presigned_url = self.storage.generate_presigned_upload_url(
             video.original_path,
+            upload_id=str(upload_id),
             part_number=part_number,
             expires=expires,
         )
@@ -276,8 +277,8 @@ class UploadService:
             # Update video record
             video.upload_status = "uploaded"
             video.uploaded_at = datetime.utcnow()
-            video.s3_etag = result.get("etag")
-            video.s3_version_id = result.get("version_id")
+            # Note: s3_etag and s3_version_id columns don't exist in Video model
+            # etag is returned in completion result for API response
 
             self.db.commit()
             self.db.refresh(video)

@@ -103,8 +103,10 @@ class TestMultipartUpload:
         mock_minio_client.bucket_exists.return_value = True
         mock_minio_client.presigned_put_object.return_value = "https://minio.example.com/bucket/object?signature=xyz"
 
+        upload_id = "test-upload-123"
         url = storage_service.generate_presigned_upload_url(
             "videos/test.mp4",
+            upload_id=upload_id,
             part_number=1,
             expires=timedelta(hours=1),
         )
@@ -113,7 +115,8 @@ class TestMultipartUpload:
         mock_minio_client.presigned_put_object.assert_called_once()
         call_args = mock_minio_client.presigned_put_object.call_args
         assert call_args[0][0] == "spatial-intel-videos"
-        assert call_args[0][1] == "videos/test.mp4.part1"
+        # Verify part object name includes upload_id for session isolation
+        assert call_args[0][1] == f"videos/test.mp4.{upload_id}.part1"
 
     def test_complete_multipart_upload(self, storage_service, mock_minio_client):
         """Test completing a multipart upload."""
@@ -145,17 +148,20 @@ class TestMultipartUpload:
         """Test aborting a multipart upload."""
         mock_minio_client.bucket_exists.return_value = True
 
-        # Mock list_objects to return part objects
+        upload_id = "upload-123"
+        # Mock list_objects to return part objects with namespaced upload_id
         mock_obj1 = Mock()
-        mock_obj1.object_name = "videos/test.mp4.part1"
+        mock_obj1.object_name = f"videos/test.mp4.{upload_id}.part1"
         mock_obj2 = Mock()
-        mock_obj2.object_name = "videos/test.mp4.part2"
+        mock_obj2.object_name = f"videos/test.mp4.{upload_id}.part2"
         mock_minio_client.list_objects.return_value = [mock_obj1, mock_obj2]
 
-        storage_service.abort_multipart_upload("videos/test.mp4", "upload-123")
+        storage_service.abort_multipart_upload("videos/test.mp4", upload_id)
 
-        # Should list objects with prefix
+        # Should list objects with upload_id-namespaced prefix (session isolation)
         mock_minio_client.list_objects.assert_called_once()
+        call_args = mock_minio_client.list_objects.call_args
+        assert call_args[1]["prefix"] == f"videos/test.mp4.{upload_id}.part"
         # Should remove both part objects
         assert mock_minio_client.remove_object.call_count == 2
 

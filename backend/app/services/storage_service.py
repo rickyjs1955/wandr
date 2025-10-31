@@ -114,6 +114,7 @@ class StorageService:
     def generate_presigned_upload_url(
         self,
         object_name: str,
+        upload_id: str,
         part_number: int,
         expires: timedelta = timedelta(hours=1),
     ) -> str:
@@ -122,6 +123,7 @@ class StorageService:
 
         Args:
             object_name: S3 object key
+            upload_id: Upload session ID to namespace the part (prevents collisions)
             part_number: Part number (1-indexed, max 10000)
             expires: URL expiration time (default 1 hour)
 
@@ -131,6 +133,7 @@ class StorageService:
         Example:
             url = storage.generate_presigned_upload_url(
                 "videos/recording.mp4",
+                upload_id="abc-123",
                 part_number=1
             )
             # Frontend uploads to this URL with PUT request
@@ -138,8 +141,9 @@ class StorageService:
         self.ensure_initialized()
 
         try:
-            # For multipart uploads, we append part number to object name
-            part_object_name = f"{object_name}.part{part_number}"
+            # Namespace part objects with upload_id to prevent collisions between
+            # concurrent/retry uploads targeting the same final object
+            part_object_name = f"{object_name}.{upload_id}.part{part_number}"
 
             url = self.client.presigned_put_object(
                 self.bucket_name,
@@ -147,7 +151,7 @@ class StorageService:
                 expires=expires,
             )
 
-            logger.debug(f"Generated presigned upload URL for part {part_number}")
+            logger.debug(f"Generated presigned upload URL for part {part_number} (session {upload_id})")
             return url
 
         except S3Error as e:
@@ -190,7 +194,8 @@ class StorageService:
 
             sources = []
             for part in sorted(parts, key=lambda x: x["part_number"]):
-                part_object_name = f"{object_name}.part{part['part_number']}"
+                # Use namespaced part name matching generate_presigned_upload_url
+                part_object_name = f"{object_name}.{upload_id}.part{part['part_number']}"
                 sources.append(ComposeSource(self.bucket_name, part_object_name))
 
             # Compose all parts into final object
@@ -200,15 +205,15 @@ class StorageService:
                 sources,
             )
 
-            # Clean up part objects
+            # Clean up part objects for this upload session only
             for part in parts:
-                part_object_name = f"{object_name}.part{part['part_number']}"
+                part_object_name = f"{object_name}.{upload_id}.part{part['part_number']}"
                 try:
                     self.client.remove_object(self.bucket_name, part_object_name)
                 except S3Error:
                     logger.warning(f"Failed to remove part object: {part_object_name}")
 
-            logger.info(f"✅ Completed multipart upload: {object_name}")
+            logger.info(f"✅ Completed multipart upload: {object_name} (session {upload_id})")
 
             return {
                 "object_name": object_name,
@@ -238,11 +243,11 @@ class StorageService:
         self.ensure_initialized()
 
         try:
-            # Clean up any existing part objects
-            # List objects with the part prefix
+            # Clean up only this upload session's part objects
+            # Use upload_id-namespaced prefix to avoid deleting other sessions' parts
             objects = self.client.list_objects(
                 self.bucket_name,
-                prefix=f"{object_name}.part",
+                prefix=f"{object_name}.{upload_id}.part",
             )
 
             for obj in objects:
@@ -251,7 +256,7 @@ class StorageService:
                 except S3Error:
                     logger.warning(f"Failed to remove part object: {obj.object_name}")
 
-            logger.info(f"✅ Aborted multipart upload: {object_name}")
+            logger.info(f"✅ Aborted multipart upload: {object_name} (session {upload_id})")
 
         except S3Error as e:
             logger.error(f"Failed to abort multipart upload: {e}")

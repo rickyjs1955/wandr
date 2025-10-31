@@ -58,13 +58,14 @@ class JobService:
             raise ValueError(f"Video {video_id} not found")
 
         # Create job record
+        # Note: parameters column doesn't exist in ProcessingJob model
+        # Use result_data for job configuration if needed, or add parameters column in future migration
         job = ProcessingJob(
             id=uuid4(),
             video_id=video_id,
             job_type=job_type,
             status="pending",
-            parameters=parameters or {},
-            queued_at=datetime.utcnow(),
+            # queued_at: let DB default populate (avoids clock skew)
         )
 
         self.db.add(job)
@@ -92,12 +93,17 @@ class JobService:
         Returns:
             ProcessingJob record with celery_task_id
         """
-        # Create job record
+        # Create job record (parameters removed - see create_job)
         job = self.create_job(
             video_id=video_id,
             job_type="proxy_generation",
-            parameters={"priority": priority},
         )
+
+        # Update video processing_status to reflect that processing has been queued
+        video = self.db.query(Video).filter(Video.id == video_id).first()
+        if video:
+            video.processing_status = "processing"
+            video.processing_job_id = str(job.id)
 
         # Queue Celery task
         from app.tasks.video_tasks import generate_proxy_video
@@ -193,7 +199,7 @@ class JobService:
             "duration_seconds": duration_seconds,
             "error_message": job.error_message,
             "result_data": job.result_data,
-            "parameters": job.parameters,
+            # Note: parameters column doesn't exist, removed from response
         }
 
     def get_pending_jobs(

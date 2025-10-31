@@ -101,7 +101,12 @@ def generate_proxy_video(
 
         # Update video record (placeholder values)
         video.proxy_path = video.original_path.replace("/original/", "/proxy/")
-        video.proxy_generated = False  # Will be True in Phase 2.5
+        # Note: proxy_generated column doesn't exist in Video model
+        # Phase 2.5 will either add this column or use a different approach to track proxy status
+
+        # Update video processing_status to reflect task completion
+        video.processing_status = "completed"
+        video.processing_completed_at = self.db.execute("SELECT NOW()").scalar()
         self.db.commit()
 
         # Update job status
@@ -124,6 +129,12 @@ def generate_proxy_video(
 
     except Exception as e:
         logger.error(f"❌ Proxy generation failed: video_id={video_id}, error={e}")
+
+        # Update video processing_status to failed
+        video = self.db.query(Video).filter(Video.id == video_uuid).first()
+        if video:
+            video.processing_status = "failed"
+            video.processing_error = str(e)
 
         # Update job status to failed
         job = self.db.query(ProcessingJob).filter(ProcessingJob.id == job_uuid).first()

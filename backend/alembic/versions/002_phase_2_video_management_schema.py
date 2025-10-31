@@ -57,6 +57,8 @@ def upgrade() -> None:
 
     # Step 2: Migrate existing data
     # Set mall_id from camera_pin relationship
+    # Note: Explicitly cast upload_timestamp (TIMESTAMP) to UTC before storing in uploaded_at (TIMESTAMPTZ)
+    # This prevents timezone shift issues when the source data was already stored as UTC
     op.execute("""
         UPDATE videos v
         SET mall_id = cp.mall_id,
@@ -64,8 +66,8 @@ def upgrade() -> None:
             filename = v.original_filename,
             original_path = v.file_path,
             upload_status = 'uploaded',
-            uploaded_at = v.upload_timestamp,
-            updated_at = v.created_at
+            uploaded_at = v.upload_timestamp AT TIME ZONE 'UTC',
+            updated_at = v.created_at AT TIME ZONE 'UTC'
         FROM camera_pins cp
         WHERE v.camera_pin_id = cp.id
     """)
@@ -102,8 +104,8 @@ def upgrade() -> None:
     op.create_index('ix_videos_mall_id', 'videos', ['mall_id'])
     op.create_index('ix_videos_pin_id', 'videos', ['pin_id'])
     op.create_index('ix_videos_checksum', 'videos', ['checksum_sha256'])
-    op.create_index('ix_videos_uploaded_at', 'videos', ['uploaded_at'], postgresql_ops={'uploaded_at': 'DESC'})
-    op.create_index('ix_videos_recorded_at', 'videos', ['recorded_at'], postgresql_ops={'recorded_at': 'DESC'})
+    op.create_index('ix_videos_uploaded_at', 'videos', [sa.text('uploaded_at DESC')])
+    op.create_index('ix_videos_recorded_at', 'videos', [sa.text('recorded_at DESC')])
     op.create_index('ix_videos_upload_status', 'videos', ['upload_status'])
 
     # Step 6: Add unique constraint for deduplication
@@ -137,7 +139,7 @@ def upgrade() -> None:
     op.create_index('ix_jobs_video_id', 'processing_jobs', ['video_id'])
     op.create_index('ix_jobs_status', 'processing_jobs', ['status'])
     op.create_index('ix_jobs_celery_task_id', 'processing_jobs', ['celery_task_id'])
-    op.create_index('ix_jobs_queued_at', 'processing_jobs', ['queued_at'], postgresql_ops={'queued_at': 'DESC'})
+    op.create_index('ix_jobs_queued_at', 'processing_jobs', [sa.text('queued_at DESC')])
 
     # Step 9: Drop old columns (keep for backward compatibility initially)
     # These can be dropped after verifying migration success:
