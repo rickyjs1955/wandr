@@ -23,8 +23,8 @@ function MapDashboard() {
   const [pinFormData, setPinFormData] = useState({
     name: '',
     label: '',
-    latitude: 0,
-    longitude: 0,
+    location_lat: 0,
+    location_lng: 0,
     pin_type: 'normal',
     camera_fps: 15,
     camera_note: '',
@@ -84,8 +84,8 @@ function MapDashboard() {
   const handleMapClick = (coords) => {
     setPinFormData({
       ...pinFormData,
-      latitude: coords.latitude,
-      longitude: coords.longitude,
+      location_lat: coords.latitude,
+      location_lng: coords.longitude,
     });
     setShowPinForm(true);
     setSelectedPin(null);
@@ -97,8 +97,8 @@ function MapDashboard() {
     setPinFormData({
       name: pin.name,
       label: pin.label || '',
-      latitude: pin.latitude,
-      longitude: pin.longitude,
+      location_lat: pin.location_lat,
+      location_lng: pin.location_lng,
       pin_type: pin.pin_type,
       camera_fps: pin.camera_fps,
       camera_note: pin.camera_note || '',
@@ -131,8 +131,8 @@ function MapDashboard() {
       setPinFormData({
         name: '',
         label: '',
-        latitude: 0,
-        longitude: 0,
+        location_lat: 0,
+        location_lng: 0,
         pin_type: 'normal',
         camera_fps: 15,
         camera_note: '',
@@ -203,8 +203,8 @@ function MapDashboard() {
               setPinFormData({
                 name: '',
                 label: '',
-                latitude: 0,
-                longitude: 0,
+                location_lat: 0,
+                location_lng: 0,
                 pin_type: 'normal',
                 camera_fps: 15,
                 camera_note: '',
@@ -305,11 +305,11 @@ function MapDashboard() {
                   <input
                     type="number"
                     step="any"
-                    value={pinFormData.latitude}
+                    value={pinFormData.location_lat}
                     onChange={(e) =>
                       setPinFormData({
                         ...pinFormData,
-                        latitude: parseFloat(e.target.value),
+                        location_lat: parseFloat(e.target.value),
                       })
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -324,11 +324,11 @@ function MapDashboard() {
                   <input
                     type="number"
                     step="any"
-                    value={pinFormData.longitude}
+                    value={pinFormData.location_lng}
                     onChange={(e) =>
                       setPinFormData({
                         ...pinFormData,
-                        longitude: parseFloat(e.target.value),
+                        location_lng: parseFloat(e.target.value),
                       })
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"

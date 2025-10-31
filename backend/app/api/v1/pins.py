@@ -94,13 +94,13 @@ async def create_pin(
         )
 
     # Validate coordinates
-    if not (-90 <= pin_data.latitude <= 90):
+    if not (-90 <= pin_data.location_lat <= 90):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid latitude. Must be between -90 and 90",
         )
 
-    if not (-180 <= pin_data.longitude <= 180):
+    if not (-180 <= pin_data.location_lng <= 180):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid longitude. Must be between -180 and 180",
@@ -225,15 +225,15 @@ async def update_pin(
     update_data = pin_update.model_dump(exclude_unset=True)
 
     # Validate coordinates if provided
-    if "latitude" in update_data:
-        if not (-90 <= update_data["latitude"] <= 90):
+    if "location_lat" in update_data:
+        if not (-90 <= update_data["location_lat"] <= 90):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid latitude. Must be between -90 and 90",
             )
 
-    if "longitude" in update_data:
-        if not (-180 <= update_data["longitude"] <= 180):
+    if "location_lng" in update_data:
+        if not (-180 <= update_data["location_lng"] <= 180):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid longitude. Must be between -180 and 180",

@@ -128,7 +128,7 @@ function MapViewer({ geojson, pins = [], onPinClick, onMapClick, selectedPinId }
         {pins.map((pin) => (
           <Marker
             key={pin.id}
-            position={[pin.latitude, pin.longitude]}
+            position={[pin.location_lat, pin.location_lng]}
             icon={pin.pin_type === 'entrance' ? entrancePinIcon : normalPinIcon}
             eventHandlers={{
               click: () => onPinClick && onPinClick(pin),

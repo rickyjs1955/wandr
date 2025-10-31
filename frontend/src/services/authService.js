@@ -5,19 +5,10 @@
  * and fetching current user information.
  */
 
-import axios from 'axios';
+import api from './api';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-const API_PREFIX = '/api/v1';
-
-// Configure axios instance with credentials
-const apiClient = axios.create({
-  baseURL: `${API_BASE_URL}${API_PREFIX}`,
-  withCredentials: true, // Important: Include cookies in requests
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
+// Use shared API client
+const apiClient = api;
 
 /**
  * Login with username/email and password
