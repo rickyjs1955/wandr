@@ -26,6 +26,7 @@ class Mall(Base):
     # Relationships
     users = relationship("User", back_populates="mall")
     camera_pins = relationship("CameraPin", back_populates="mall", cascade="all, delete-orphan")
+    videos = relationship("Video", back_populates="mall", cascade="all, delete-orphan")
     stores = relationship("Store", back_populates="mall", cascade="all, delete-orphan")
     tenants = relationship("Tenant", back_populates="mall", cascade="all, delete-orphan")
 
