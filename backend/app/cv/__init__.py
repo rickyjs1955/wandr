@@ -12,6 +12,7 @@ from app.cv.person_detector import PersonDetector, create_detector
 from app.cv.garment_segmenter import GarmentSegmenter, GarmentRegions, create_segmenter
 from app.cv.color_extractor import ColorExtractor, ColorDescriptor, create_color_extractor
 from app.cv.garment_type_classifier import GarmentTypeClassifier, create_type_classifier
+from app.cv.embedding_extractor import EmbeddingExtractor, create_embedding_extractor
 from app.cv.garment_analyzer import GarmentAnalyzer, OutfitDescriptor, create_garment_analyzer
 
 __all__ = [
@@ -25,6 +26,8 @@ __all__ = [
     "create_color_extractor",
     "GarmentTypeClassifier",
     "create_type_classifier",
+    "EmbeddingExtractor",
+    "create_embedding_extractor",
     "GarmentAnalyzer",
     "OutfitDescriptor",
     "create_garment_analyzer",

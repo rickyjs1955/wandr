@@ -4,7 +4,7 @@ Garment Analysis Service
 Combines garment segmentation and color extraction to generate
 complete outfit descriptors for person re-identification.
 
-Phase 3.2 implementation with basic garment type classification.
+Phase 3.2-3.3 implementation with garment type classification and visual embeddings.
 """
 import logging
 from typing import Dict, List, Optional
@@ -14,6 +14,7 @@ from dataclasses import dataclass, asdict
 from app.cv.garment_segmenter import GarmentSegmenter, GarmentRegions, create_segmenter
 from app.cv.color_extractor import ColorExtractor, ColorDescriptor, create_color_extractor
 from app.cv.garment_type_classifier import GarmentTypeClassifier, create_type_classifier
+from app.cv.embedding_extractor import EmbeddingExtractor, create_embedding_extractor
 
 logger = logging.getLogger(__name__)
 
@@ -37,10 +38,11 @@ class OutfitDescriptor:
     shoes: GarmentDescriptor
     overall_quality: float  # 0-1, overall outfit analysis quality
     segmentation_method: str  # "thirds" or "pose"
+    visual_embedding: Optional[np.ndarray] = None  # 128D CLIP embedding (Phase 3.3)
 
     def to_dict(self) -> Dict:
         """Convert to dictionary for JSON serialization."""
-        return {
+        result = {
             "top": {
                 "type": self.top.type,
                 "color": self.top.color,
@@ -66,6 +68,12 @@ class OutfitDescriptor:
             "segmentation_method": self.segmentation_method
         }
 
+        # Add embedding if present
+        if self.visual_embedding is not None:
+            result["visual_embedding"] = self.visual_embedding.tolist()
+
+        return result
+
 
 class GarmentAnalyzer:
     """
@@ -74,12 +82,14 @@ class GarmentAnalyzer:
     Workflow:
     1. Segment person crop into top/bottom/shoes regions
     2. Extract color from each region
-    3. Classify garment type (simplified for Phase 3.2)
-    4. Generate complete outfit descriptor
+    3. Classify garment type (Phase 3.2)
+    4. Extract visual embedding (Phase 3.3)
+    5. Generate complete outfit descriptor
 
-    Phase 3.2 Implementation:
+    Phase 3.2-3.3 Implementation:
     - Basic garment type classification using heuristics
     - Color-based type inference (shirt/tee, pants/jeans, sneakers/boots)
+    - CLIP-based visual embeddings (128D)
     - Confidence scores for type predictions
     - Robust color extraction with graceful degradation
     """
@@ -88,7 +98,9 @@ class GarmentAnalyzer:
         self,
         segmenter: Optional[GarmentSegmenter] = None,
         color_extractor: Optional[ColorExtractor] = None,
-        type_classifier: Optional[GarmentTypeClassifier] = None
+        type_classifier: Optional[GarmentTypeClassifier] = None,
+        embedding_extractor: Optional[EmbeddingExtractor] = None,
+        extract_embeddings: bool = False  # Changed default to False
     ):
         """
         Initialize garment analyzer.
@@ -97,10 +109,40 @@ class GarmentAnalyzer:
             segmenter: GarmentSegmenter instance (creates default if None)
             color_extractor: ColorExtractor instance (creates default if None)
             type_classifier: GarmentTypeClassifier instance (creates default if None)
+            embedding_extractor: EmbeddingExtractor instance (creates default if None)
+            extract_embeddings: Whether to extract visual embeddings (default: False)
+                               IMPORTANT: Changed to False to prevent CLIP model loading
+                               in restricted/no-network environments. Set to True only
+                               when embeddings are actually needed.
         """
         self.segmenter = segmenter or create_segmenter()
         self.color_extractor = color_extractor or create_color_extractor()
         self.type_classifier = type_classifier or create_type_classifier()
+        self.extract_embeddings = extract_embeddings
+        self._embedding_extractor_instance = embedding_extractor
+
+        # Lazy initialization: only create extractor when first needed
+        # This prevents CLIP model loading in Celery workers that don't need it
+        self._embedding_extractor_initialized = (embedding_extractor is not None)
+
+    @property
+    def embedding_extractor(self) -> Optional[EmbeddingExtractor]:
+        """
+        Lazy-loaded embedding extractor.
+
+        Only initializes CLIP model when first accessed and extract_embeddings=True.
+        This prevents unnecessary model loading in restricted/no-network environments
+        and reduces memory usage in Celery workers.
+        """
+        if not self.extract_embeddings:
+            return None
+
+        if not self._embedding_extractor_initialized:
+            logger.info("Initializing embedding extractor (lazy load)")
+            self._embedding_extractor_instance = create_embedding_extractor()
+            self._embedding_extractor_initialized = True
+
+        return self._embedding_extractor_instance
 
     def analyze(self, person_crop: np.ndarray) -> OutfitDescriptor:
         """
@@ -185,7 +227,16 @@ class GarmentAnalyzer:
             region_quality=regions.quality_score
         )
 
-        # Step 4: Calculate overall quality
+        # Step 4: Extract visual embedding (Phase 3.3)
+        visual_embedding = None
+        if self.extract_embeddings and self.embedding_extractor:
+            try:
+                visual_embedding = self.embedding_extractor.extract(person_crop)
+            except Exception as e:
+                logger.warning(f"Embedding extraction failed: {e}. Continuing without embedding.")
+                visual_embedding = None
+
+        # Step 5: Calculate overall quality
         overall_quality = self._calculate_overall_quality(
             regions, top_color, bottom_color, shoes_color
         )
@@ -195,7 +246,8 @@ class GarmentAnalyzer:
             bottom=bottom_desc,
             shoes=shoes_desc,
             overall_quality=overall_quality,
-            segmentation_method=regions.method
+            segmentation_method=regions.method,
+            visual_embedding=visual_embedding
         )
 
     def _calculate_overall_quality(
@@ -322,14 +374,29 @@ class GarmentAnalyzer:
         return result
 
 
-def create_garment_analyzer() -> GarmentAnalyzer:
+def create_garment_analyzer(extract_embeddings: bool = False) -> GarmentAnalyzer:
     """
     Factory function to create garment analyzer with default components.
 
+    Args:
+        extract_embeddings: Whether to extract visual embeddings (default: False)
+                          IMPORTANT: Set to True only when embeddings are needed.
+                          Default changed to False to prevent CLIP loading in
+                          restricted/no-network environments (e.g., Celery workers).
+
     Returns:
-        GarmentAnalyzer instance
+        GarmentAnalyzer instance with lazy-loaded embedding extractor
     """
     segmenter = create_segmenter()
     color_extractor = create_color_extractor()
     type_classifier = create_type_classifier()
-    return GarmentAnalyzer(segmenter, color_extractor, type_classifier)
+
+    # Don't create embedding_extractor here - let it be lazy-loaded
+    # This prevents CLIP model loading until actually needed
+    return GarmentAnalyzer(
+        segmenter,
+        color_extractor,
+        type_classifier,
+        embedding_extractor=None,  # Lazy initialization
+        extract_embeddings=extract_embeddings
+    )
