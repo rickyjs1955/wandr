@@ -53,3 +53,10 @@ coverage/
 # OS
 .DS_Store
 Thumbs.db
+
+# ML Model Weights (auto-downloaded by Ultralytics)
+*.pt
+*.pth
+*.onnx
+*.engine
+*.weights

@@ -886,24 +886,25 @@ The backend merges base parameters with `.secret` calibration at runtime. See `.
 **Completion Date**: 2025-11-01
 **Status**: All 10 subphases (2.1-2.10) delivered including multipart upload, proxy generation, job monitoring, and E2E testing
 
-### Phase 3: Computer Vision - Part 1 (Weeks 6-7)
-- [ ] Integrate person detection model (YOLOv8/RT-DETR)
-- [ ] Implement garment classification pipeline
-  - [ ] Garment type classifier (top/bottom/shoes)
-  - [ ] LAB color space conversion and quantization
-  - [ ] Color histogram generation per garment
-- [ ] Build visual embedding extractor (CLIP-small)
-- [ ] Implement physique attribute extraction (height, aspect ratio)
-- [ ] Create tracklet data model and storage
+### Phase 3: Computer Vision Pipeline (Weeks 6-7) ✅ COMPLETE
+- [x] Integrate person detection model (YOLOv8n)
+- [x] Implement garment classification pipeline
+  - [x] Garment type classifier (top/bottom/shoes)
+  - [x] LAB color space conversion and quantization
+  - [x] Color histogram generation per garment
+- [x] Build visual embedding extractor (CLIP ViT-B/32)
+- [x] Implement physique attribute extraction (height, aspect ratio)
+- [x] Create tracklet data model and storage
+- [x] Integrate within-camera tracking (ByteTrack)
+- [x] Build tracklet generation pipeline
+- [x] Implement outfit vector computation (512D CLIP embedding)
+- [x] Create tracklet quality scoring
+- [x] Test with benchmarks (828 fps end-to-end)
 
-### Phase 4: Computer Vision - Part 2 (Weeks 8-9)
-- [ ] Integrate within-camera tracking (ByteTrack/DeepSORT)
-- [ ] Build tracklet generation pipeline
-- [ ] Implement outfit vector computation (128D embedding)
-- [ ] Create tracklet quality scoring
-- [ ] Test with single-camera footage
+**Completion Date**: 2025-11-02
+**Status**: All 4 subphases (3.1-3.4) delivered including person detection, garment classification, visual embeddings, and within-camera tracking
 
-### Phase 5: Cross-Camera Re-ID (Weeks 10-11)
+### Phase 4: Cross-Camera Re-ID (Weeks 8-9)
 - [ ] Implement multi-signal scoring system:
   - [ ] Outfit similarity (type + color + embedding)
   - [ ] Time plausibility with transit time precomputation
@@ -915,7 +916,7 @@ The backend merges base parameters with `.secret` calibration at runtime. See `.
 - [ ] Build journey construction algorithm
 - [ ] Implement confidence scoring
 
-### Phase 6: Integration & Optimization (Weeks 12-13)
+### Phase 5: Integration & Optimization (Weeks 10-11)
 - [ ] Connect CV pipeline with backend APIs
 - [ ] Build journey JSON export with full metadata
 - [ ] Implement logging system for all link decisions
@@ -924,7 +925,7 @@ The backend merges base parameters with `.secret` calibration at runtime. See `.
 - [ ] Performance optimization (GPU utilization, batch processing)
 - [ ] Implement uniform/frequent-outfit filtering
 
-### Phase 7: Reporting & UI (Weeks 14-15)
+### Phase 6: Reporting & UI (Weeks 12-13)
 - [ ] Build journey viewer UI with map visualization
 - [ ] Create operator reports (entry analysis, first-store)
 - [ ] Implement heatmap visualization (edge traversal counts)
@@ -932,7 +933,7 @@ The backend merges base parameters with `.secret` calibration at runtime. See `.
 - [ ] Create association inspection UI for debugging
 - [ ] Build video preview with bounding box overlay
 
-### Phase 8: Testing & Hardening (Week 16)
+### Phase 7: Testing & Hardening (Week 14)
 - [ ] Comprehensive testing with edge cases:
   - [ ] Rush hour scenarios (20+ people per camera)
   - [ ] Similar outfits (uniforms, common colors)
@@ -943,7 +944,7 @@ The backend merges base parameters with `.secret` calibration at runtime. See `.
 - [ ] Bug fixes and refinements
 - [ ] Parameter tuning on real data
 
-### Phase 9: Documentation & Demo (Week 17)
+### Phase 8: Documentation & Demo (Week 15)
 - [ ] User documentation (operator guide)
 - [ ] API documentation (OpenAPI/Swagger)
 - [ ] System architecture documentation
@@ -1084,6 +1085,28 @@ This is a prototype project. Key areas for contribution:
 
 ## Changelog
 
+### Version 3.2 (2025-11-02)
+**Implementation Update: Phase 3 Complete**
+
+- **Phase 3 Complete (2025-11-02)**: Computer vision pipeline delivered
+  - YOLOv8n person detection (24.76 FPS CPU, 66.54 FPS MPS)
+  - Garment classification (type + LAB color extraction)
+  - CLIP ViT-B/32 visual embeddings (512D)
+  - ByteTrack within-camera tracking
+  - TrackletGenerator pipeline (828 fps end-to-end)
+  - Code review fixes applied (analyze() TypeError, tracklet timing)
+  - Comprehensive benchmarks validating all components
+
+- **Roadmap Updated**: Renumbered phases after Phase 3 consolidation
+  - Phase 3: Computer Vision Pipeline (Weeks 6-7) - Complete
+  - Phase 4: Cross-Camera Re-ID (Weeks 8-9) - Next
+  - Phase 5: Integration & Optimization (Weeks 10-11)
+  - Phase 6: Reporting & UI (Weeks 12-13)
+  - Phase 7: Testing & Hardening (Week 14)
+  - Phase 8: Documentation & Demo (Week 15)
+
+- **Next Phase**: Phase 4 - Cross-Camera Re-Identification
+
 ### Version 3.1 (2025-11-01)
 **Architecture Update: Dynamic Multi-Signal Fusion Weights**
 
@@ -1148,8 +1171,8 @@ This is a prototype project. Key areas for contribution:
 
 ---
 
-**Document Version**: 3.1
-**Last Updated**: 2025-11-01
-**Status**: Phase 2 Complete - Ready for Phase 3 (Computer Vision)
+**Document Version**: 3.2
+**Last Updated**: 2025-11-02
+**Status**: Phase 3 Complete - Ready for Phase 4 (Cross-Camera Re-ID)
 **Architecture**: Dynamic multi-signal fusion with learned calibration (`.secret`)
 <!-- #endregion -->

@@ -6,19 +6,20 @@ A spatial intelligence platform that enables mall operators to track visitor jou
 
 Transform how property owners understand and optimize visitor flow by combining computer vision, spatial mapping, and behavioral analytics. The platform tracks anonymous visitor journeys using outfit characteristics as identifiers, providing unprecedented insights into customer behavior patterns.
 
-## 🎉 Phase 2 Complete: Enterprise-Grade Video Management
+## 🎉 Phase 3 Complete: Computer Vision Pipeline
 
-Phase 2 has been successfully completed, delivering a production-ready video management system:
+Phase 3 has been successfully completed, delivering a production-ready computer vision pipeline:
 
-- ✅ **Multipart Upload System**: Handle videos up to 2GB with resume capability and checksum deduplication
-- ✅ **Distributed Processing**: Celery-based background job queue with Redis broker
-- ✅ **FFmpeg Pipeline**: Automatic proxy generation (480p) and thumbnail extraction
-- ✅ **Secure Streaming**: Auto-refreshing signed URLs with seamless playback continuity
-- ✅ **Real-time Monitoring**: Job status tracking, system statistics, and stuck job detection
-- ✅ **Production UI**: Drag-and-drop upload, progress tracking, and custom video player
-- ✅ **Test Coverage**: E2E integration tests and performance benchmarks
+- ✅ **Person Detection**: YOLOv8n integration (24.76 FPS CPU, 66.54 FPS MPS)
+- ✅ **Garment Classification**: Type classification (top/bottom/shoes) + LAB color extraction
+- ✅ **Visual Embeddings**: CLIP ViT-B/32 (512D appearance descriptors)
+- ✅ **Within-Camera Tracking**: ByteTrack tracker optimized for 1 FPS sampling
+- ✅ **Tracklet Generation**: Complete pipeline integrating all CV components (828 fps end-to-end)
+- ✅ **Quality Scoring**: Tracklet quality metrics for filtering low-confidence matches
+- ✅ **Physique Attributes**: Non-biometric height category and aspect ratio extraction
+- ✅ **Code Review**: All issues resolved (analyze() TypeError, tracklet timing fixes)
 
-**Ready for Phase 3**: Computer vision integration for person detection and outfit-based re-identification.
+**Ready for Phase 4**: Cross-camera re-identification and journey construction.
 
 ## Tech Stack
 
@@ -299,6 +300,9 @@ Once the backend is running, visit:
 - [x] MinIO object storage for video files
 
 ### Phase 2: Video Management (Complete)
+
+See [Docs/summaries/Phase_2_Summary.md](Docs/summaries/Phase_2_Summary.md) for detailed documentation.
+
 - [x] **Enhanced Database Schema** (Phase 2.1)
   - Video model with multipart upload support
   - Processing job tracking with Celery task IDs
@@ -355,6 +359,35 @@ Once the backend is running, visit:
   - Performance benchmarks
   - Test fixtures and utilities
 
+### Phase 3: Computer Vision Pipeline (Complete)
+
+See [Docs/summaries/Phase_3_Executive_Summary.md](Docs/summaries/Phase_3_Executive_Summary.md) for comprehensive documentation.
+
+- [x] **Person Detection** (Phase 3.1)
+  - YOLOv8n model integration
+  - Frame extraction at 1 FPS
+  - Celery task pipeline
+  - Performance: 24.76 FPS CPU, 66.54 FPS MPS
+
+- [x] **Garment Classification** (Phase 3.2)
+  - Garment type classifier (top/bottom/shoes)
+  - LAB color space extraction
+  - Color histogram generation
+  - GarmentAnalyzer service
+
+- [x] **Visual Embedding Extraction** (Phase 3.3)
+  - CLIP ViT-B/32 integration
+  - 512D raw CLIP features
+  - L2 normalization for cosine similarity
+  - Binary serialization
+
+- [x] **Within-Camera Tracking** (Phase 3.4)
+  - ByteTrack tracker (18,751 fps tracker-only)
+  - TrackletGenerator pipeline (828 fps end-to-end)
+  - Outfit and embedding aggregation
+  - Quality scoring system
+  - Code review fixes applied
+
 ### Pending Features (Phase 1 - Deferred)
 - [ ] Authentication system
 - [ ] Mall and map management with GeoJSON
@@ -375,28 +408,52 @@ All 10 sub-phases completed:
 - Phase 2.9: Frontend Video Player & Management UI
 - Phase 2.10: Integration Testing & Performance Validation
 
-### Phase 3: Computer Vision - Part 1 (Next)
-- Person detection with YOLOv8/RT-DETR
-- Garment classification (top/bottom/shoes)
-- CIELAB color space conversion and quantization
-- Visual embedding extraction (CLIP-small)
-- Physique attribute extraction
-- Tracklet data model and storage
+**Completion Date**: 2025-11-01
 
-### Phase 4: Computer Vision - Part 2
-- Within-camera tracking (ByteTrack/DeepSORT)
-- Tracklet generation pipeline
-- Outfit vector computation (128D embedding)
-- Single-camera footage testing
+### ✅ Phase 3: Computer Vision Pipeline (Complete)
+All 4 sub-phases completed:
+- Phase 3.1: Person Detection (YOLOv8n, API Integration)
+- Phase 3.2: Garment Classification (Type + LAB Color)
+- Phase 3.3: Visual Embedding Extraction (CLIP ViT-B/32)
+- Phase 3.4: Within-Camera Tracking (ByteTrack, TrackletGenerator)
 
-### Phase 5: Cross-Camera Re-ID
+**Key Achievements**:
+- End-to-end processing: 828 fps (far exceeds 3× real-time target)
+- ByteTrack tracker: 18,751 fps (IoU matching)
+- All 15 success criteria met (100%)
+- Code review: All issues resolved
+
+**Completion Date**: 2025-11-02
+
+### Phase 4: Cross-Camera Re-ID (Next)
 - Multi-signal scoring (outfit + time + adjacency + physique)
 - Candidate retrieval with pre-filters
 - Association decision logic
 - Conflict resolution
 - Journey construction algorithm
 
-### Phases 6-9: Integration, Optimization, Reporting, Testing
+### Phase 5: Integration & Optimization
+- Connect CV pipeline with backend APIs
+- Build journey JSON export
+- Implement logging system for link decisions
+- Performance optimization (GPU, batch processing)
+
+### Phase 6: Reporting & UI
+- Journey viewer UI with map visualization
+- Operator reports (entry analysis, first-store)
+- Heatmap visualization
+
+### Phase 7: Testing & Hardening
+- Edge case testing (rush hour, uniforms, lighting)
+- Security hardening
+- Parameter tuning
+
+### Phase 8: Documentation & Demo
+- User documentation
+- API documentation
+- Demo preparation
+
+### Future Phases
 See [CLAUDE.md](CLAUDE.md) for complete technical roadmap and specifications
 
 ## Contributing
@@ -464,6 +521,6 @@ For questions or support, please open an issue in the repository.
 
 ---
 
-**Version**: 0.2.0 (Phase 2 - Complete)
-**Last Updated**: 2025-11-01
-**Status**: Video management system fully operational, ready for computer vision integration
+**Version**: 0.3.0 (Phase 3 - Complete)
+**Last Updated**: 2025-11-02
+**Status**: Computer vision pipeline fully operational, ready for cross-camera re-identification
