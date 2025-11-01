@@ -19,6 +19,11 @@ build/
 .env.local
 .env.*.local
 
+# Wandr Trade Secrets (calibration data)
+.secret
+.secret.*
+bandwidth
+
 # IDE
 .vscode/
 .idea/

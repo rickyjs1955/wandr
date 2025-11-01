@@ -474,12 +474,19 @@ Camera pins are stored in the mall's GeoJSON map as a FeatureCollection. Each pi
 **Core Philosophy**: Don't rely on any single weak signal (like color alone). Instead, fuse multiple privacy-safe, non-biometric signals into a robust probabilistic match score (0-1 range) for cross-camera re-identification.
 
 **Key Risk Mitigation**: The naive assumption that "no duplicate outfit combinations exist in a single day" will fail immediately on busy days and with employee uniforms. We mitigate this by combining:
-- **Outfit descriptors** (type + color + visual embedding): 55% weight
-- **Time-window constraints** (transit plausibility): 20% weight  
-- **Camera adjacency** (spatial topology): 15% weight
-- **Basic physique cues** (height category, aspect ratio): 10% weight
+- **Outfit descriptors** (type + color + visual embedding): ~55% base weight
+- **Time-window constraints** (transit plausibility): ~20% base weight
+- **Camera adjacency** (spatial topology): ~15% base weight
+- **Basic physique cues** (height category, aspect ratio): ~10% base weight
 
-This multi-signal fusion allows the system to gracefully handle ambiguity, prefer false splits over false merges, and adapt to different mall conditions.
+**IMPORTANT - Dynamic Weights**: The percentages shown above (55/20/15/10) are **initial baseline values only**. In production, weights are **dynamically adjusted** and **data-driven**, governed by a confidential calibration file (`.secret`) that is:
+- **Learned from real data**: Per-mall, per-camera, per-edge calibration based on observed visitor behavior
+- **Continuously updated**: Monthly retraining with new labeled data and performance metrics
+- **Mall-specific**: Different malls have different optimal weights based on layout, lighting, crowd patterns
+- **Camera-specific**: Individual camera trust factors based on lighting quality and occlusion patterns
+- **Trade secret**: The learned calibration parameters form Wandr's competitive advantage
+
+The final composite score uses these learned weights merged at runtime from secure storage (HashiCorp Vault, AWS KMS, or encrypted database). This allows the system to gracefully handle ambiguity, prefer false splits over false merges, and adapt to different mall conditions.
 
 ### Step 1: Person Detection
 - Sample video frames at 1 fps for analysis (15 fps for preview proxies)
@@ -529,7 +536,9 @@ Extract three complementary representations per person:
 
 For each new tracklet at target camera B, compare against recent tracklets from adjacent cameras using a **fused scoring system**:
 
-#### Signal 1: Outfit Similarity (55% weight)
+#### Signal 1: Outfit Similarity (~55% base weight)
+
+**Note**: All weights shown in this section are baseline values for reference. Production uses dynamically learned weights from `.secret` calibration.
 
 Combines three sub-components:
 
@@ -561,7 +570,7 @@ embed_score = cosine_similarity(vec_A, vec_B)
 outfit_sim = 0.35 * type_score + 0.35 * color_score + 0.30 * embed_cosine
 ```
 
-#### Signal 2: Time Plausibility (20% weight)
+#### Signal 2: Time Plausibility (~20% base weight)
 
 Validates that transit time between cameras is physically plausible:
 
@@ -582,7 +591,7 @@ time_score = exp(-max(0, |Δt - μ|) / τ)
 - Reject if Δt > μ + 3τ (too late, unless high-dwell area)
 - Starting values: τ = 30 seconds
 
-#### Signal 3: Camera Adjacency (15% weight)
+#### Signal 3: Camera Adjacency (~15% base weight)
 
 Leverages spatial topology to constrain matching:
 
@@ -597,7 +606,7 @@ adj_score = 1.0  if direct neighbor (in adjacent_to list)
 - Respects directional flow (entrance → interior)
 - Allows 2-hop at reduced weight for blind spots
 
-#### Signal 4: Physique & Pose (10% weight)
+#### Signal 4: Physique & Pose (~10% base weight)
 
 Non-biometric physical cues as tiebreakers:
 
@@ -614,16 +623,28 @@ height_score = 1.0  if same category
 
 #### Final Match Score
 
+**Conceptual Formula** (baseline weights):
 ```
-match_score = 0.55 * outfit_sim
-            + 0.20 * time_score
-            + 0.15 * adj_score
-            + 0.10 * physique_pose_score
+match_score = w_outfit * outfit_sim
+            + w_time * time_score
+            + w_adj * adj_score
+            + w_phys * physique_pose_score
+            + Σ(w_extra_i * extra_i)    // Future: crowd, lighting, uniform factors
 ```
 
-**Decision Rules:**
-1. **Link**: If `match_score ≥ 0.78` AND `outfit_sim ≥ 0.70`
-2. **Ambiguous**: If top-2 candidates within 0.04 of each other → start new visitor
+Where base weights are: `w_outfit ≈ 0.55`, `w_time ≈ 0.20`, `w_adj ≈ 0.15`, `w_phys ≈ 0.10`
+
+**Production Implementation**: The actual weights `w_*` are loaded at runtime from the `.secret` calibration file, which contains:
+- Per-mall overrides (e.g., Mall A uses 0.58/0.18/0.14/0.10)
+- Per-camera trust factors (multiply outfit_sim by camera reliability score)
+- Per-edge transit time calibrations (learned μ and τ from observed data)
+- Extra signal coefficients (crowd density, lighting trust, uniform penalties)
+
+**Decision Rules** (thresholds also learned per mall):
+1. **Link**: If `match_score ≥ threshold` AND `outfit_sim ≥ min_threshold`
+   - Default thresholds: 0.78 and 0.70 (may vary per mall)
+2. **Ambiguous**: If top-2 candidates within `ambiguity_gap` → start new visitor
+   - Default gap: 0.04 (may vary per mall)
 3. **New Visitor**: If no candidate passes thresholds
 
 **Conflict Handling:**
@@ -708,7 +729,13 @@ confidence = f(avg_link_score, path_length, timing_consistency)
 
 ### Tuning & Observability
 
-**Parameters to Start With:**
+**Configuration Architecture**:
+
+Wandr uses a two-tier configuration system:
+1. **Base Parameters** (in code): Initial defaults for development and testing
+2. **Learned Calibration** (`.secret` file): Production overrides loaded from secure storage
+
+**Base Parameters** (code defaults):
 ```python
 # Frame sampling
 ANALYSIS_FPS = 1.0
@@ -726,7 +753,7 @@ COLOR_SOFT_THRESHOLD = 12
 EMBEDDING_DIM = 128
 EMBEDDING_COSINE_THRESHOLD = 0.75
 
-# Matching thresholds
+# Matching thresholds (baseline - overridden by .secret in production)
 MATCH_SCORE_THRESHOLD = 0.78
 OUTFIT_SIM_MIN_THRESHOLD = 0.70
 AMBIGUITY_GAP = 0.04
@@ -734,6 +761,15 @@ AMBIGUITY_GAP = 0.04
 # Candidate window
 MAX_CANDIDATE_WINDOW_SEC = 480  # 8 minutes
 ```
+
+**Production Calibration** (`.secret` file - not in repository):
+- Per-mall weight overrides (learned from labeled data)
+- Per-camera trust factors (lighting quality, occlusion patterns)
+- Per-edge transit times (observed μ and τ from real transitions)
+- Extra signal coefficients (crowd density, uniform penalties)
+- Decision threshold adjustments (precision/recall optimization)
+
+The backend merges base parameters with `.secret` calibration at runtime. See `.secret` file for complete calibration schema.
 
 **Logging per Link:**
 ```json
@@ -827,22 +863,28 @@ MAX_CANDIDATE_WINDOW_SEC = 480  # 8 minutes
 <!-- #region Development Roadmap -->
 ## Development Roadmap
 
-### Phase 1: Foundation (Weeks 1-3)
-- [ ] Set up development environment (Docker, Python, Node.js)
-- [ ] Create basic authentication system with role scaffolding
-- [ ] Implement map viewer with GeoJSON support (Leaflet/Mapbox)
-- [ ] Build camera pin CRUD operations with adjacency relationships
-- [ ] Design and implement database schema (all tables including future-use)
-- [ ] Set up object storage (S3/MinIO) for videos
-- [ ] Implement session management (HttpOnly cookies, CSRF protection)
+### Phase 1: Foundation (Weeks 1-3) ✅ COMPLETE
+- [x] Set up development environment (Docker, Python, Node.js)
+- [x] Create basic authentication system with role scaffolding
+- [x] Implement map viewer with GeoJSON support (Leaflet/Mapbox)
+- [x] Build camera pin CRUD operations with adjacency relationships
+- [x] Design and implement database schema (all tables including future-use)
+- [x] Set up object storage (S3/MinIO) for videos
+- [x] Implement session management (HttpOnly cookies, CSRF protection)
 
-### Phase 2: Video Management (Weeks 4-5)
-- [ ] Implement video upload functionality with validation
-- [ ] Create FFmpeg pipeline for proxy generation (480p, 10fps)
-- [ ] Build video metadata management system
-- [ ] Set up background job queue (Celery/RQ with Redis)
-- [ ] Implement signed URL generation for secure video access
-- [ ] Create video listing and playback UI
+**Completion Date**: 2025-10-31
+**Status**: All subphases (1.1-1.3) delivered with >80% test coverage
+
+### Phase 2: Video Management (Weeks 4-5) ✅ COMPLETE
+- [x] Implement video upload functionality with validation
+- [x] Create FFmpeg pipeline for proxy generation (480p, 10fps)
+- [x] Build video metadata management system
+- [x] Set up background job queue (Celery/RQ with Redis)
+- [x] Implement signed URL generation for secure video access
+- [x] Create video listing and playback UI
+
+**Completion Date**: 2025-11-01
+**Status**: All 10 subphases (2.1-2.10) delivered including multipart upload, proxy generation, job monitoring, and E2E testing
 
 ### Phase 3: Computer Vision - Part 1 (Weeks 6-7)
 - [ ] Integrate person detection model (YOLOv8/RT-DETR)
@@ -939,10 +981,11 @@ MAX_CANDIDATE_WINDOW_SEC = 480  # 8 minutes
 **Why This Multi-Signal Approach Works:**
 1. **Robustness**: No single signal failure breaks the system
 2. **Graceful Degradation**: Works in suboptimal conditions (poor lighting, crowded scenes)
-3. **Tunable**: Weights and thresholds can be adjusted per mall
-4. **Explainable**: Each link has audit trail showing why it was made
+3. **Adaptive**: Weights and thresholds are learned from data and adjusted per mall/camera
+4. **Explainable**: Each link has audit trail showing why it was made (including which weights were used)
 5. **Privacy-Preserving**: All signals are non-biometric and aggregate-safe
 6. **Scalable**: Efficient candidate pre-filtering keeps computation manageable
+7. **Data-Driven**: Continuous learning from labeled data improves accuracy over time (via `.secret` calibration updates)
 <!-- #endregion -->
 
 <!-- #region Known Limitations & Assumptions -->
@@ -1041,6 +1084,46 @@ This is a prototype project. Key areas for contribution:
 
 ## Changelog
 
+### Version 3.1 (2025-11-01)
+**Architecture Update: Dynamic Multi-Signal Fusion Weights**
+
+- **Scoring System Architecture**: Clarified that signal weights (55/20/15/10) are baseline values only
+  - Production weights are **dynamically learned** and **data-driven**
+  - Governed by confidential `.secret` calibration file (trade secret)
+  - Per-mall, per-camera, per-edge calibration from observed data
+  - Continuous learning with monthly retraining
+  - Two-tier configuration: base parameters (code) + learned calibration (secure storage)
+
+- **Documentation Updates**:
+  - Updated all weight references to show "~55%" (approximate baseline)
+  - Added `.secret` file schema with calibration examples
+  - Clarified runtime weight merging from secure storage (Vault/KMS)
+  - Added `.secret` to .gitignore (never commit calibration data)
+
+### Version 3.0 (2025-11-01)
+**Implementation Update: Phase 1 & Phase 2 Complete**
+
+- **Phase 1 Complete (2025-10-31)**: Foundation infrastructure delivered
+  - Development environment with Docker Compose (5 services)
+  - PostgreSQL database with 10 tables (4 active, 6 scaffolded)
+  - Argon2id authentication with Redis session management
+  - Interactive map viewer with Leaflet and GeoJSON support
+  - Camera pin CRUD with adjacency graph management
+  - MinIO object storage integration
+  - 90+ tests with >80% backend coverage
+
+- **Phase 2 Complete (2025-11-01)**: Video management system delivered
+  - Multipart upload with SHA-256 checksum deduplication
+  - FFmpeg proxy generation pipeline (480p, 10fps) with thumbnail extraction
+  - Celery background job queue with Redis broker
+  - Signed URL streaming with auto-renewal
+  - Job monitoring and stuck job cleanup
+  - Admin API endpoints for system statistics
+  - React video player with job status tracking
+  - E2E integration tests and performance benchmarks
+
+- **Next Phase**: Phase 3 - Computer Vision Part 1 (Person Detection & Garment Classification)
+
 ### Version 2.0 (2025-10-30)
 **Major Update: Multi-Signal Re-Identification Strategy**
 
@@ -1065,7 +1148,8 @@ This is a prototype project. Key areas for contribution:
 
 ---
 
-**Document Version**: 2.0
-**Last Updated**: 2025-10-30
-**Status**: Pre-Development / Planning Phase
+**Document Version**: 3.1
+**Last Updated**: 2025-11-01
+**Status**: Phase 2 Complete - Ready for Phase 3 (Computer Vision)
+**Architecture**: Dynamic multi-signal fusion with learned calibration (`.secret`)
 <!-- #endregion -->

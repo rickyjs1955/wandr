@@ -13,3 +13,13 @@ Phase 2.7: Stuck Job Watchdog & Monitoring
 Phase 2.8: Frontend Upload Components
 Phase 2.9: Frontend Video Player & Management UI
 Phase 2.10: Integration Testing & Performance Validation
+Phase 3   : Computer Vision I
+Phase 3.1 : Person Detection Model Integration (YOLOv8/RT-DETR)
+Phase 3.2 : Garment Classification Pipeline (type + color)
+Phase 3.3 : Visual Embedding Extraction (CLIP-small, 128D)
+Phase 3.4 : Within-Camera Tracking (ByteTrack/DeepSORT)
+Phase 4   : Computer Vision II
+Phase 4.1 : Multi-Signal Scoring System
+Phase 4.2 : Candidate Retrieval System
+Phase 4.3 : Association Decision Logic
+Phase 4.4 : Journey Construction
