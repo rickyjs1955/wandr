@@ -32,6 +32,21 @@ minio==7.2.0
 # Video Processing
 ffmpeg-python==0.2.0
 
+# Computer Vision (Phase 3)
+torch==2.6.0
+torchvision==0.21.0
+ultralytics==8.3.56  # YOLOv8
+opencv-python-headless==4.10.0.84
+Pillow==11.0.0
+numpy==1.26.4
+transformers==4.48.0  # CLIP model
+scikit-learn==1.6.1  # PCA for embedding projection
+
+# Object Tracking (Phase 3.4)
+filterpy==1.4.5  # Kalman filter for DeepSORT/ByteTrack
+scipy==1.15.1  # Linear assignment (alternative to lap for Python 3.13+)
+boxmot==10.0.47  # Multi-object tracking (ByteTrack, DeepSORT)
+
 # Testing
 pytest==7.4.3
 pytest-asyncio==0.21.1

@@ -276,6 +276,94 @@ class FFmpegService:
                 os.remove(output_path)
             raise
 
+    def extract_frames(
+        self,
+        input_path: str,
+        output_dir: str,
+        fps: float = 1.0,
+        output_pattern: str = "frame_%06d.jpg",
+        quality: int = 2,
+    ) -> list[str]:
+        """
+        Extract frames from video at specified fps.
+
+        Optimized for CV analysis (Phase 3): extracts frames at 1 fps by default
+        for person detection and tracking.
+
+        Args:
+            input_path: Path to video file
+            output_dir: Directory to save extracted frames
+            fps: Frames per second to extract (default: 1.0 for CV analysis)
+            output_pattern: Filename pattern (default: "frame_%06d.jpg")
+            quality: JPEG quality (1-31, lower=better, default: 2 for high quality)
+
+        Returns:
+            List of extracted frame file paths (sorted by frame number)
+
+        Raises:
+            FFmpegError: If frame extraction fails
+            FileNotFoundError: If input file doesn't exist
+
+        Example:
+            >>> ffmpeg_service.extract_frames(
+            ...     "video.mp4",
+            ...     "/tmp/frames",
+            ...     fps=1.0  # Extract 1 frame per second
+            ... )
+            ['/tmp/frames/frame_000001.jpg', '/tmp/frames/frame_000002.jpg', ...]
+        """
+        if not os.path.exists(input_path):
+            raise FileNotFoundError(f"Input video not found: {input_path}")
+
+        try:
+            # Create output directory
+            os.makedirs(output_dir, exist_ok=True)
+
+            # Get video metadata for logging
+            metadata = self.extract_metadata(input_path)
+            expected_frames = int(metadata["duration_seconds"] * fps)
+
+            logger.info(
+                f"Extracting frames at {fps} fps from {input_path} "
+                f"(duration: {metadata['duration_seconds']:.1f}s, "
+                f"expected frames: ~{expected_frames})"
+            )
+
+            # Build output path
+            output_path = os.path.join(output_dir, output_pattern)
+
+            # Build FFmpeg command
+            stream = ffmpeg.input(input_path)
+
+            # Apply fps filter to sample frames
+            stream = ffmpeg.filter(stream, "fps", fps=fps)
+
+            # Output as JPEG sequence
+            stream = ffmpeg.output(
+                stream,
+                output_path,
+                format="image2",
+                vcodec="mjpeg",
+                qscale=quality,
+            )
+
+            # Run FFmpeg
+            ffmpeg.run(stream, overwrite_output=True, capture_stdout=True, capture_stderr=True)
+
+            # Get list of extracted frames (sorted by number)
+            import glob
+            frames = sorted(glob.glob(os.path.join(output_dir, "frame_*.jpg")))
+
+            logger.info(
+                f"Frame extraction complete: {len(frames)} frames extracted to {output_dir}"
+            )
+
+            return frames
+
+        except ffmpeg.Error as e:
+            logger.error(f"FFmpeg frame extraction error: {e.stderr.decode() if e.stderr else str(e)}")
+            raise
+
     def validate_video(self, input_path: str) -> Tuple[bool, Optional[str]]:
         """
         Validate that file is a valid video.

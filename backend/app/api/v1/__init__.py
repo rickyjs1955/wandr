@@ -3,7 +3,7 @@ API v1 router aggregation.
 """
 from fastapi import APIRouter
 
-from app.api.v1 import auth, malls, pins, videos, admin
+from app.api.v1 import auth, malls, pins, videos, admin, analysis
 
 api_router = APIRouter()
 
@@ -13,5 +13,6 @@ api_router.include_router(malls.router, prefix="/malls", tags=["malls"])
 api_router.include_router(pins.router, prefix="/malls/{mall_id}/pins", tags=["camera-pins"])
 api_router.include_router(videos.router)
 api_router.include_router(admin.router)
+api_router.include_router(analysis.router)
 
 __all__ = ["api_router"]
